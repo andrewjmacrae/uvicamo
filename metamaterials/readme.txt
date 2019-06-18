@@ -1,0 +1,1 @@
+This folder holds code for metamaterial simulations.
