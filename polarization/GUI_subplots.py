@@ -51,35 +51,53 @@ def polarization_ellipse(S):
 
     return x,y
 
+#create figure
+fig,(ax1,ax2) = plt.subplots(1,2,figsize = (20,10))
 
-fig,(ax1,ax2) = plt.subplots(1,2,figsize = (20,10))#, ncols = 2)
-ax2 = plt.axes(xlim=(-5, 5))
-ax2.scatter(1, 1)
-ax1 = plt.axes(xlim=(-1.0, 1.0), ylim=(-1.0, 1.0))
+#set graph parameters for Ellipse
+ax1.set_xlim(-1.0, 1.0)
+ax1.set_ylim(-1.0, 1.0)
 ax1.set_xlabel('Ex')
 ax1.set_ylabel('Ey')
 ax1.set_title('Polarization Ellipse')
-plt.grid()
-line, = ax1.plot([], [], lw=2)
+ax1.grid(True)
+ax1.set_aspect('equal')
+
+#set graph parameters for Stokes bar graph
+ax2.set_xlim(-0.6, 3.6)
+ax2.set_ylim(-1.05, 1.05)
+plt.xticks([0,1,2,3], ['S0','S1','S2','S3'])
+ax2.set_xlabel('Stokes Parameter')
+ax2.set_ylabel('Value of Stokes Parameter')
+ax2.set_title('Stokes Parameters')
+
+line1, = ax1.plot([], [], lw=2)
 
 def init():
-    line.set_data([], [])
-    return line,
+    line1.set_data([], [])
+    
+    return line1,
+
+#initialize bar graph as a global variable, outside animation function so we don't have to clear out data each frame
+bar = plt.bar([0, 1, 2, 3], [0, 0, 0, 0], align='center')
 
 # animation function.  This is called sequentially
 #later, iterate through S instead of phi
 def animate(phi): 
-    xanim = []
-    yanim = []
+    x1,y1,x2,y2 = [],[],[],[]
     S = [1,0,np.cos(phi),np.sin(phi)]
-    xanim,yanim = polarization_ellipse(S)
-    line.set_data(xanim,yanim)
-    
-    return line,
 
+    x1,y1 = polarization_ellipse(S)
+    x2 = [0,1,2,3]
+    y2 = S
+
+    line1.set_data(x1,y1)
+    #bar = plt.bar(x2,y2, align = 'center')
+    for i in range(len(S)):
+        bar[i].set_height(S[i])
+
+    return line1, bar,
 
 # call the animator.  blit=True means only re-draw the parts that have changed.
-anim = animation.FuncAnimation(fig, animate, init_func=init, frames=np.linspace(1, 2*np.pi, 800), interval=1, blit=False)
+anim = animation.FuncAnimation(fig, animate, init_func=init, frames=np.linspace(1, 2*np.pi, 200), interval=1, blit=False)
 plt.show()
-
-#add a second subfigure that animates a bar graph showing the 4 stokes in real time
