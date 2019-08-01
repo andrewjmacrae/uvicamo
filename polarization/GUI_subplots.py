@@ -103,8 +103,21 @@ def animate(phi):
     stokes = np.genfromtxt(stokes_output.txt, dtype=float)
     S = S[-1]
 
-    #Method 2: Not sure what function can do this but read in last line
-    #  such that it is removed from text file
+    #Method 2: read in and delete each line as they are added
+    #   note that output must be csv
+    file = open(stokes_output.txt, 'r+')
+    S = file.readline().split(',')
+    file.truncate(0)
+    file.close()
+
+    S0 = float(S[0])
+    S1 = float(S[1])
+    S2 = float(S[2])
+    S3 = float(S[3])
+
+    S = [S0,S1,S2,S3]
+
+    ######end of method 2
 
     x1, y1 = polarization_ellipse(S)
     x2 = [0, 1, 2, 3]
