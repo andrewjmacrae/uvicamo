@@ -26,29 +26,26 @@ def polarization_ellipse(S):
     #define ellipse parameters from stokes vectors
     a = np.sqrt(0.5*(S0+np.sqrt(S1**2+S2**2)))
     b = np.sqrt(0.5*(S0-np.sqrt(S1**2+S2**2)))
-
+    rot = np.matrix([[np.cos(psi), -1*np.sin(psi)],
+                     [np.sin(psi), np.cos(psi)]])
+    ba = b/a
     x1, x2, y1, y2 = [], [], [], []
     #create an x array for plotting ellipse y values
-    x = np.linspace(-5, 5, 1500)
+    x = np.linspace(-a, a, 200)
 
     for x in x:
-        if a**2-x**2 >= 0:  # to avoid negative values in the square root
-            #cartesian equation of an ellipse
-            Y1 = (b/a)*np.sqrt(a**2-x**2)
-            #relection about the x-axis
-            Y2 = -1*(b/a)*np.sqrt(a**2-x**2)
-            #rotate the ellipse by psi
-            XY1 = np.matrix([[x],
-                             [Y1]])
-            XY2 = np.matrix([[x],
-                             [Y2]])
-            rot = np.matrix([[np.cos(psi), -1*np.sin(psi)],
-                             [np.sin(psi), np.cos(psi)]])
-
-            y1.append(float((rot*XY1)[1]))
-            x1.append(float((rot*XY1)[0]))
-            y2.append(float((rot*XY2)[1]))
-            x2.append(float((rot*XY2)[0]))
+        #cartesian equation of an ellipse
+        Y1 = ba*np.sqrt(a**2-x**2)
+        #Y1 relection about the x-axis
+        #rotate the ellipse by psi
+        XY1 = np.matrix([[x],
+                        [Y1]])
+        XY2 = np.matrix([[x],
+                        [-Y1]])
+        y1.append(float((rot*XY1)[1]))
+        x1.append(float((rot*XY1)[0]))
+        y2.append(float((rot*XY2)[1]))
+        x2.append(float((rot*XY2)[0]))
 
     #x2,y2 reversed in order so that there is continuity in the ellipse (no line through the middle)
     x = x1+x2[::-1]
@@ -133,5 +130,5 @@ def animate(phi):
 
 # call the animator.  blit=True means only re-draw the parts that have changed.
 anim = animation.FuncAnimation(fig, animate, init_func=init, frames=np.linspace(
-    1, 2*np.pi, 200), interval=1, blit=False)
+    1, 2*np.pi, 200), interval=1, blit=True)
 plt.show()
