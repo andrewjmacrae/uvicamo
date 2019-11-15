@@ -1,0 +1,4 @@
+Sample rate: 10 ksps 
+Spinning at 75% from 6490 to about 6600 
+1st two runs with nothing in front (should be lin)
+2nd two w/ QWP at 22.5 and then some randpm angle
