@@ -29,7 +29,7 @@ for k in range(len(trigz)-1):
 	print(str(k)+'th chunck had '+str(L)+' points')
 	ax2.plot(tt,chunk)
 
-ax1.legend()
+ax1.legend(loc='best')
 ax1.set_xlabel('Time [ms]')
 ax2.set_xlabel('Time [ms]')
 ax1.set_ylabel('Pulse Detection')
