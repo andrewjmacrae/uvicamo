@@ -201,7 +201,7 @@ def animate_fun(idx):
     
     # degree of polarization
 
-    print("DOP:", np.sqrt(abs(S1**2+S2**2+S3**3)))
+    print("DOP:", np.sqrt(S1**2+S2**2+S3**2))
     
     #S = [1,S1,S2,S3]
     S = [S0,S1,S2,S3]
