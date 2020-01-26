@@ -189,8 +189,19 @@ def animate_fun(idx):
     
     #should normalize via S0 but giving funky results...
     nrm = np.sqrt(S1**2 + S2**2 + S3**2)
+    # I believe the issue is that we're normallizing and we aren't sure how python intergrets that
+    # in real time, so my hypothesis is to keep a set of values that aren't normalized to then 
+    # determine the degree of polarization from, and if they are the same answer than we can have
+    # confidence in the first one. I don't have the Pi here though so I can't test my hypothesis
+    S_0 = S0
+    S_1 = S1
+    S_2 = S2
+    S_3 = S3
     #nrm  = S0
-    S0/=nrm
+    S0/=nrm # Also I'm not too sure about this one, and if you do this then I think you'd need
+            # to divide by S0 in the DOP statement as well because if they're all divide by the
+            # same constant you aren't removing any dependence on S0 in the degree of polarization
+            # unless you can verify that S0/nrm == 1.
     S1/=nrm
     S2/=nrm
     S3/=nrm
@@ -200,7 +211,7 @@ def animate_fun(idx):
     print('nrm',nrm)
     
     # degree of polarization
-
+    print('Degree of polarization without normaliztion:',np.sqrt(S_1**2+S_2**2+S_3**2)/S_0)
     print("DOP:", np.sqrt(S1**2+S2**2+S3**2))
     
     #S = [1,S1,S2,S3]
