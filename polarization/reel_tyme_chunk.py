@@ -171,7 +171,7 @@ def animate_fun(idx):
     if S0**2<S1**2+S2**2+S3**2:
         print('DO NOT TRUST THE FOLLOWING RESULTS')
         
-    if np.mean(y1) < 0.01:
+    if np.mean(y1) < 0.08:
         #just by eye for now
         #this value is not independent from gain of the detector
         #how about S/N? This would require a noise reading before the experiment
