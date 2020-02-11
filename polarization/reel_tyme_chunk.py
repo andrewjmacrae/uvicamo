@@ -6,6 +6,8 @@
 # Then calibrate phase !! (Done)
 # Then extract Stokes Params and plot Pol. ellipse (Done)
 # Then plot bar graph (Done) and poincare (Not so Done)
+# add raw values to plots
+# scale ellipse by degree of polarization
 
 # minimum number of triggers
 # minimum amount of intensity
@@ -47,7 +49,7 @@ ln1, = ax1.plot([], [], lw=2)
 #  we don't have to clear out data each frame
 bar = plt.bar([0, 1, 2, 3], [0, 0, 0, 0], align='center')
 
-def polarization_ellipse(S0,S1,S2):
+def polarization_ellipse(S0,S1,S2,DOP):
     '''
     given a stokes vector, this function plots the corresponding
     polarization ellipse
@@ -59,22 +61,13 @@ def polarization_ellipse(S0,S1,S2):
 
     #solve for psi, the angle from the x axis of the ellipse
     
-    '''
-    old method before arctan2 was implemented
-    if S1 == 0:
-        psi = np.pi/4
-    else:
-        psi = 0.5*np.arctan2(S2,S1)
-    '''
-    
     psi = 0.5*np.arctan2(S2,S1)
 
     #define ellipse parameters from stokes vectors
-    a = np.sqrt(0.5*(S0+np.sqrt(S1**2+S2**2)))
-    b = np.sqrt(0.5*(S0-np.sqrt(S1**2+S2**2)))
+    a = np.sqrt(0.5*(S0+np.sqrt(S1**2+S2**2)))*DOP
+    b = np.sqrt(0.5*(S0-np.sqrt(S1**2+S2**2)))*DOP
     rot = np.matrix([[np.cos(psi), -1*np.sin(psi)],
                      [np.sin(psi), np.cos(psi)]])
-    ba = b/a
     x1, x2, y1, y2 = [], [], [], []
     #create an x array for plotting ellipse y values
     x = np.linspace(-a, a, 200)
@@ -213,11 +206,15 @@ def animate_fun(idx):
     # degree of polarization
     print('Degree of polarization without normaliztion:',np.sqrt(S_1**2+S_2**2+S_3**2)/S_0)
     print("DOP:", np.sqrt(S1**2+S2**2+S3**2))
+
+    DOP = np.sqrt(S_1**2+S_2**2+S_3**2)/S_0)
     
     #S = [1,S1,S2,S3]
     S = [S0,S1,S2,S3]
-    x,y = polarization_ellipse(1,S1,S2)
+    x,y = polarization_ellipse(1,S1,S2,DOP)
     
+    ax1.text(0,0,'DOP: {}'.format(DOP),fontsize = 12)
+    ax1.text(0, -1, 'Mean Signal: {}'.format(np.mean(y1)), fontsize = 12)
     
     ln1.set_data(x,y)
     
