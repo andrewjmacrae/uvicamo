@@ -6,8 +6,14 @@
 # Then calibrate phase !! (Done)
 # Then extract Stokes Params and plot Pol. ellipse (Done)
 # Then plot bar graph (Done) and poincare (Not so Done)
-# add raw values to plots
-# scale ellipse by degree of polarization
+# add raw values to plots (done)
+# scale ellipse by degree of polarization (done)
+
+#clean up
+#DOP in a function
+#scale S123 by S0
+#make sure raw values refresh on plot (done)
+
 
 # minimum number of triggers
 # minimum amount of intensity
@@ -45,6 +51,10 @@ fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 10))
 
 ln1, = ax1.plot([], [], lw=2)
 
+#text variables to update
+txt1 = ax1.text(-1,0.95,'',fontsize = 12)
+txt2 = ax1.text(-1, 0.85, '', fontsize = 12)
+
 #initialize bar graph as a variable outside animation function so
 #  we don't have to clear out data each frame
 bar = plt.bar([0, 1, 2, 3], [0, 0, 0, 0], align='center')
@@ -66,6 +76,7 @@ def polarization_ellipse(S0,S1,S2,DOP):
     #define ellipse parameters from stokes vectors
     a = np.sqrt(0.5*(S0+np.sqrt(S1**2+S2**2)))*DOP
     b = np.sqrt(0.5*(S0-np.sqrt(S1**2+S2**2)))*DOP
+    ba = b/a
     rot = np.matrix([[np.cos(psi), -1*np.sin(psi)],
                      [np.sin(psi), np.cos(psi)]])
     x1, x2, y1, y2 = [], [], [], []
@@ -97,11 +108,17 @@ def init_animation():
     #graph parameters for Ellipse
     ax1.set_xlim(-1.0, 1.0)
     ax1.set_ylim(-1.0, 1.0)
-    ax1.set_xlabel('Ex')
-    ax1.set_ylabel('Ey')
+    ax1.set_xlabel('$E_x$')
+    ax1.set_ylabel('$E_y$')
     ax1.set_title('Polarization Ellipse')
     ax1.grid(True)
     ax1.set_aspect('equal')
+    
+    #add unit circle around ellipse
+    t = np.linspace(0,2*np.pi,1000)
+    x = [np.cos(T) for T in t]
+    y = [np.sin(T) for T in t]
+    ax1.plot(x,y, color = 'gray', linestyle = '--', alpha = 0.5)
 
     #graph parameters for Bar graph
     ax2.set_xlim(-0.6, 3.6)
@@ -113,7 +130,7 @@ def init_animation():
     ax2.set_title('Stokes Parameters')
     
     print('Phase: '+str(round(phs*180/2*np.pi,1))+' deg')
-    return ln1,
+    return ln1,txt1,txt2
     
 def extract_triggers(trig_dat,thrsh=1):
     trigz = np.array([])
@@ -204,17 +221,22 @@ def animate_fun(idx):
     print('nrm',nrm)
     
     # degree of polarization
-    print('Degree of polarization without normaliztion:',np.sqrt(S_1**2+S_2**2+S_3**2)/S_0)
+    DOP = np.sqrt(S_1**2+S_2**2+S_3**2)/S_0/0.3099
+    
+    #aydans
+    #print('Degree of polarization without normaliztion:',np.sqrt(S_1**2+S_2**2+S_3**2)/S_0/0.34)
+    print("DOP with fudged adjustment:", DOP)
     print("DOP:", np.sqrt(S1**2+S2**2+S3**2))
-
-    DOP = np.sqrt(S_1**2+S_2**2+S_3**2)/S_0)
     
     #S = [1,S1,S2,S3]
     S = [S0,S1,S2,S3]
     x,y = polarization_ellipse(1,S1,S2,DOP)
     
-    ax1.text(0,0,'DOP: {}'.format(DOP),fontsize = 12)
-    ax1.text(0, -1, 'Mean Signal: {}'.format(np.mean(y1)), fontsize = 12)
+    txt1.set_text('DOP: {}'.format(DOP))
+    txt2.set_text('Mean Signal: {}'.format(np.mean(y1)))
+    
+    #ax1.text(-1,0.95,'DOP: {}'.format(DOP),fontsize = 12)
+    #ax1.text(-1, 0.85, 'Mean Signal: {}'.format(np.mean(y1)), fontsize = 12)
     
     ln1.set_data(x,y)
     
