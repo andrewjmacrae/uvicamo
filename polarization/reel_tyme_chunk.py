@@ -18,6 +18,8 @@
 # minimum number of triggers
 # minimum amount of intensity
 
+# Intial goals: Add simulation Mode, debug algorithm for (simulated) known system
+
 from daqhats import mcc118, OptionFlags, HatIDs, HatError
 from daqhats_utils import select_hat_device, enum_mask_to_string, chan_list_to_mask
 import numpy as np
