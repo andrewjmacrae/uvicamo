@@ -20,28 +20,34 @@
 
 # Intial goals: Add simulation Mode, debug algorithm for (simulated) known system
 
-from daqhats import mcc118, OptionFlags, HatIDs, HatError
-from daqhats_utils import select_hat_device, enum_mask_to_string, chan_list_to_mask
+we_live_in_a_simulation = True
+sim = we_live_in_a_simulation
+
+if not sim:
+    from daqhats import mcc118, OptionFlags, HatIDs, HatError
+    from daqhats_utils import select_hat_device, enum_mask_to_string, chan_list_to_mask
 import numpy as np
 from matplotlib import pyplot as plt, animation
 
 phs = .05
 
-timeout=.5
-channels = [0, 2]
-channel_mask = chan_list_to_mask(channels)
-num_channels = len(channels)
-
-address = select_hat_device(HatIDs.MCC_118)
-hat = mcc118(address)
 
 samples_per_channel = 1000
 scan_rate = 5000.0
-# options = OptionFlags.DEFAULT
-options = OptionFlags.CONTINUOUS
+    
+if not sim:
+    timeout=.5
+    channels = [0, 2]
+    channel_mask = chan_list_to_mask(channels)
+    num_channels = len(channels)
+    address = select_hat_device(HatIDs.MCC_118)
+    hat = mcc118(address)
 
-address = select_hat_device(HatIDs.MCC_118)
-hat = mcc118(address)
+    # options = OptionFlags.DEFAULT
+    options = OptionFlags.CONTINUOUS
+
+    address = select_hat_device(HatIDs.MCC_118)
+    hat = mcc118(address)
 
 Nsmp = samples_per_channel
 Ts = 1/scan_rate
@@ -133,7 +139,17 @@ def init_animation():
     
     print('Phase: '+str(round(phs*180/2*np.pi,1))+' deg')
     return ln1,txt1,txt2
-    
+
+def sim_pol_data(S0,w0,t0,sig_level=1,ns_level = 0):
+    Npts = len(t)
+    a = (2*S0[0]+S0[1])/4
+    b = S0[3]/2
+    c = S0[1]/4
+    d = S0[2]/4
+    ns = ns_level*np.random.randn(Npts)
+    return a + b*np.sin(2*w0*t) + c*np.cos(4*w0*t) + d*np.sin(4*w0*t) + ns
+
+
 def extract_triggers(trig_dat,thrsh=1):
     trigz = np.array([])
     for d in range(len(trig_dat)-1):
@@ -142,19 +158,26 @@ def extract_triggers(trig_dat,thrsh=1):
     return trigz.astype(int)
 
 def animate_fun(idx):
-    global phs
-    
-    hat.a_in_scan_start(channel_mask, samples_per_channel, scan_rate, options)
-    read_result = hat.a_in_scan_read(samples_per_channel, timeout)
-    y1 = read_result.data[::2]
-    y2 = read_result.data[1::2]
+    global phs,t
+    if not sim:
+        hat.a_in_scan_start(channel_mask, samples_per_channel, scan_rate, options)
+        read_result = hat.a_in_scan_read(samples_per_channel, timeout)
+        y1 = read_result.data[::2]
+        y2 = read_result.data[1::2]
+    else:
+        DP = .8
+        w = 2*np.pi*5500/60
+        S = 2*np.array([1,DP*np.cos(idx/18.)/np.sqrt(4),DP*np.sin(idx/18.)/np.sqrt(4),-DP/np.sqrt(2)])        
+        y1 = sim_pol_data(S,w,t,ns_level=.01)
+        y2 = 5*(np.mod(w*t,2*np.pi) < np.pi/12)
     
     trigz = extract_triggers(y2)
     
     print('found '+str(len(trigz))+' chunks')
     
-    hat.a_in_scan_stop()
-    hat.a_in_scan_cleanup()
+    if not sim:
+        hat.a_in_scan_stop()
+        hat.a_in_scan_cleanup()
     
     C2w,S2w,C4w,S4w,s0,C = 0,0,0,0,0,0
     Nchunks = len(trigz)
