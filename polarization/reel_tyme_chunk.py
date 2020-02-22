@@ -165,7 +165,7 @@ def animate_fun(idx):
         y1 = read_result.data[::2]
         y2 = read_result.data[1::2]
     else:
-        DP = .8
+        DP = .6
         w = 2*np.pi*5500/60
         S = 2*np.array([1,DP*np.cos(idx/18.)/np.sqrt(4),DP*np.sin(idx/18.)/np.sqrt(4),-DP/np.sqrt(2)])        
         y1 = sim_pol_data(S,w,t,ns_level=.01)
@@ -173,17 +173,17 @@ def animate_fun(idx):
     
     trigz = extract_triggers(y2)
     
-    print('found '+str(len(trigz))+' chunks')
     
     if not sim:
         hat.a_in_scan_stop()
         hat.a_in_scan_cleanup()
-    
-    C2w,S2w,C4w,S4w,s0,C = 0,0,0,0,0,0
+
+# I'm rewriting this part of the algorithm, if only because I'm too stoopid to git it. - AM
+    C0w, C2w,S2w,C4w,S4w,Mn = 0,0,0,0,0,0
     Nchunks = len(trigz)
-    
-    print('y1:',y1)
-    print('mean(y1)',np.mean(y1))
+    print(f'Working with {Nchunks} chunks')
+    # print('y1:',y1)
+    # print('mean(y1)',np.mean(y1))
     
     for k in range(Nchunks-1):
         y = y1[trigz[k]:trigz[k+1]]        
@@ -219,20 +219,13 @@ def animate_fun(idx):
         #accuracy increases as nchunks increases, there may be a better way
             #ie %diff from convergent value? 
         print('WAVEPLATE IS NOT ROTATING FAST ENOUGH FOR ACCURATE DATA')
-        
-    print('nchunks', Nchunks)
     
-    #should normalize via S0 but giving funky results...
-    nrm = np.sqrt(S1**2 + S2**2 + S3**2)
-    # I believe the issue is that we're normallizing and we aren't sure how python intergrets that
-    # in real time, so my hypothesis is to keep a set of values that aren't normalized to then 
-    # determine the degree of polarization from, and if they are the same answer than we can have
-    # confidence in the first one. I don't have the Pi here though so I can't test my hypothesis
+
     S_0 = S0
     S_1 = S1
     S_2 = S2
     S_3 = S3
-    #nrm  = S0
+    nrm  = S0
     S0/=nrm # Also I'm not too sure about this one, and if you do this then I think you'd need
             # to divide by S0 in the DOP statement as well because if they're all divide by the
             # same constant you aren't removing any dependence on S0 in the degree of polarization
