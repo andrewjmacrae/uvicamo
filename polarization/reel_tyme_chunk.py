@@ -29,7 +29,7 @@ if not sim:
 import numpy as np
 from matplotlib import pyplot as plt, animation
 
-phs = .05
+phs = .05*(1-sim)
 
 
 samples_per_channel = 1000
@@ -123,9 +123,9 @@ def init_animation():
     ax1.set_aspect('equal')
     
     #add unit circle around ellipse
-    t = np.linspace(0,2*np.pi,1000)
-    x = [np.cos(T) for T in t]
-    y = [np.sin(T) for T in t]
+    t_circ = np.linspace(0,2*np.pi,1000)
+    x = [np.cos(T) for T in t_circ]
+    y = [np.sin(T) for T in t_circ]
     ax1.plot(x,y, color = 'gray', linestyle = '--', alpha = 0.5)
 
     #graph parameters for Bar graph
@@ -141,6 +141,7 @@ def init_animation():
     return ln1,txt1,txt2
 
 def sim_pol_data(S0,w0,t0,sig_level=1,ns_level = 0):
+    global phs
     Npts = len(t)
     a = (2*S0[0]+S0[1])/4
     b = S0[3]/2
@@ -179,22 +180,22 @@ def animate_fun(idx):
         hat.a_in_scan_cleanup()
 
 # I'm rewriting this part of the algorithm, if only because I'm too stoopid to git it. - AM
-    C0w, C2w,S2w,C4w,S4w,Mn = 0,0,0,0,0,0
+    C0w, C2w,S2w,C4w,S4w,Mnw = 0,0,0,0,0,0
     Nchunks = len(trigz)
     print(f'Working with {Nchunks} chunks')
     # print('y1:',y1)
     # print('mean(y1)',np.mean(y1))
     
     for k in range(Nchunks-1):
-        y = y1[trigz[k]:trigz[k+1]]        
+        y = y1[trigz[k]:trigz[k+1]]
         wt = np.linspace(0,2*np.pi,len(y))
-        C2w += np.trapz(y*np.cos(2*wt + phs))
-        S2w += np.trapz(y*np.sin(2*wt + phs))
-        C4w += np.trapz(y*np.cos(4*wt + phs))
-        S4w += np.trapz(y*np.sin(4*wt + phs))
-        s0 += np.mean(y)
-        C+=np.trapz(y)
-    
+        C2w += np.trapz(y*np.cos(2*wt + phs, wt))
+        S2w += np.trapz(y*np.sin(2*wt + phs, wt))
+        C4w += np.trapz(y*np.cos(4*wt + phs, wt))
+        S4w += np.trapz(y*np.sin(4*wt + phs, wt))
+        Mnw += np.mean(y)
+        C0w += np.trapz(y,wt)
+        print(f'Yo! C2 = {np.trapz(y*np.cos(2*wt + phs, wt))} and it should be zero!')
     #computing Stokes Parameters from Fourier Shenanigans
     #S0 = C
     #S0 = s0
