@@ -44,17 +44,35 @@ def init_animation():
 	return ln1,ln2,
 
 def animate(frm):
-    DP = .8
-    S = 2*np.array([1,DP*np.cos(frm/18.)/np.sqrt(2),DP*np.sin(frm/18.)/np.sqrt(2),-.706*DP])
+    DP = 1.0
+    phs = float(frm/18.)
+    S = 3*np.array([1,DP*np.cos(phs)/np.sqrt(4),DP*np.sin(phs)/np.sqrt(4),DP/np.sqrt(2)])
     y1 = sim_pol_data(S,w,t,ns_level=.05)
     y2 = 5*(np.mod(w*t,2*pi) < pi/12)
     trigz = extract_triggers(y2)
-    for k in range(len(trigz)-1):
-        chonk = y[trigz[k]:trigz[k+1]]
-        print(len(chonk))
+
+    a0,n0,b0,c0,d0 = 0,0,0,0,0
+    
+    nck = len(trigz)-1
+    for k in range(nck):
+        chonk = y1[trigz[k]:trigz[k+1]]
         tt = np.linspace(0,2*pi,len(chonk))
-        print(f'(C,S) = ({round(np.trapz(chonk*np.cos(2*tt),tt),3)}, {round(np.trapz(chonk*np.sin(2*tt),tt),3)})')
-    trigz = extract_triggers(y2)
+        a0 += np.trapz(chonk,tt)/(2*pi*nck)
+        n0 += np.trapz(chonk*np.cos(2*tt),tt)/(pi*nck)
+        b0 += np.trapz(chonk*np.sin(2*tt),tt)/(pi*nck)
+        c0 += np.trapz(chonk*np.cos(4*tt),tt)/(pi*nck)
+        d0 += np.trapz(chonk*np.sin(4*tt),tt)/(pi*nck)
+    
+    S0 = 2*(a0-c0)
+    S1 = 4*c0
+    S2 = 4*d0
+    S3 = 2*b0
+
+    DOP = np.sqrt(S1**2 + S2**2 + S3**2)/S0
+
+    print(f'found: S = ({round(S0,2)},{round(S1,2)},{round(S2,2)},{round(S3,2)}), DOP = {round(DOP,2)}, cos2w = {round(n0,2)}')
+    print(f'really: S = ({round(S[0],2)},{round(S[1],2)},{round(S[2],2)},{round(S[3],2)}), DOP = {round(DP,2)}, cos2w = 0\n')
+
     ln1.set_data(t,y1)
     ln2.set_data(t,y2)
     return ln1,ln2,
