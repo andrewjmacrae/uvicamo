@@ -140,15 +140,14 @@ def init_animation():
     print('Phase: '+str(round(phs*180/2*np.pi,1))+' deg')
     return ln1,txt1,txt2
 
-def sim_pol_data(S0,w0,t0,sig_level=1,ns_level = 0):
-    global phs
+def sim_pol_data(S0,w0,t0,sig_level=1,ns_level = 0,phase = 0):    
     Npts = len(t)
     a = (2*S0[0]+S0[1])/4
     b = S0[3]/2
     c = S0[1]/4
     d = S0[2]/4
     ns = ns_level*np.random.randn(Npts)
-    return a + b*np.sin(2*w0*t) + c*np.cos(4*w0*t) + d*np.sin(4*w0*t) + ns
+    return a + b*np.sin(2*w0*t + phase) + c*np.cos(4*w0*t + phase) + d*np.sin(4*w0*t + phase) + ns
 
 
 def extract_triggers(trig_dat,thrsh=1):
@@ -160,103 +159,77 @@ def extract_triggers(trig_dat,thrsh=1):
 
 def animate_fun(idx):
     global phs,t
+    Phi = float(idx/18.)
     if not sim:
         hat.a_in_scan_start(channel_mask, samples_per_channel, scan_rate, options)
         read_result = hat.a_in_scan_read(samples_per_channel, timeout)
         y1 = read_result.data[::2]
         y2 = read_result.data[1::2]
     else:
-        DP = .6
+        DP = 1
         w = 2*np.pi*5500/60
-        S = 2*np.array([1,DP*np.cos(idx/18.)/np.sqrt(4),DP*np.sin(idx/18.)/np.sqrt(4),-DP/np.sqrt(2)])        
+        S = 3*np.array([1,DP*np.cos(Phi)/np.sqrt(2),DP*np.sin(Phi)/np.sqrt(2),DP/np.sqrt(2)])
         y1 = sim_pol_data(S,w,t,ns_level=.01)
         y2 = 5*(np.mod(w*t,2*np.pi) < np.pi/12)
     
     trigz = extract_triggers(y2)
-    
-    
+        
     if not sim:
         hat.a_in_scan_stop()
         hat.a_in_scan_cleanup()
 
 # I'm rewriting this part of the algorithm, if only because I'm too stoopid to git it. - AM
-    C0w, C2w,S2w,C4w,S4w,Mnw = 0,0,0,0,0,0
-    Nchunks = len(trigz)
+    a0,n0,b0,c0,d0 = 0,0,0,0,0
+    # C0w, C2w,S2w,C4w,S4w,Mnw = 0,0,0,0,0,0
+    Nchunks = len(trigz)-1
     print(f'Working with {Nchunks} chunks')
-    # print('y1:',y1)
-    # print('mean(y1)',np.mean(y1))
     
-    for k in range(Nchunks-1):
-        y = y1[trigz[k]:trigz[k+1]]
-        wt = np.linspace(0,2*np.pi,len(y))
-        C2w += np.trapz(y*np.cos(2*wt + phs, wt))
-        S2w += np.trapz(y*np.sin(2*wt + phs, wt))
-        C4w += np.trapz(y*np.cos(4*wt + phs, wt))
-        S4w += np.trapz(y*np.sin(4*wt + phs, wt))
-        Mnw += np.mean(y)
-        C0w += np.trapz(y,wt)
-        print(f'Yo! C2 = {np.trapz(y*np.cos(2*wt + phs, wt))} and it should be zero!')
+    for k in range(Nchunks):
+        chunk = y1[trigz[k]:trigz[k+1]]
+        wt = np.linspace(0,2*np.pi,len(chunk))
+        a0 += np.trapz(chunk,wt)/(2*np.pi*Nchunks)
+        n0 += np.trapz(chunk*np.cos(2*wt),wt)/(np.pi*Nchunks)
+        b0 += np.trapz(chunk*np.sin(2*wt),wt)/(np.pi*Nchunks)
+        c0 += np.trapz(chunk*np.cos(4*wt),wt)/(np.pi*Nchunks)
+        d0 += np.trapz(chunk*np.sin(4*wt),wt)/(np.pi*Nchunks)
+
     #computing Stokes Parameters from Fourier Shenanigans
-    #S0 = C
-    #S0 = s0
-    S1 = 2*C4w
-    S2 = 2*S4w
-    S3 = S2w
-    S0 = np.trapz(y1)*2 - S1/2
+    S0 = 2*(a0-c0)
+    S1 = 4*c0
+    S2 = 4*d0
+    S3 = 2*b0
+
+    nrm = S0
+    S = np.array([S0,S1,S2,S3])/nrm
     
-    if S0**2<S1**2+S2**2+S3**2:
-        print('DO NOT TRUST THE FOLLOWING RESULTS')
+    DOP = np.sqrt(S[1]**2 + S[2]**2 + S[3]**2)
+
+    if DOP-1 > .05:
+        print(f'Warning: Possible unphysical DOP = {round(DOP,2)} measured...')
+    if n0/nrm > 1e-2:
+        print(f'Warning: Possible alignment error: large cos(2wt) component detected (S,C) = ({b0/nrm},{n0/nrm})')
         
     if np.mean(y1) < 0.08:
         #just by eye for now
         #this value is not independent from gain of the detector
         #how about S/N? This would require a noise reading before the experiment
             #or would it... ?
-        print('NOT ENOUGH LIGHT FOR ACCURATE RESULTS')
+        print('Warning: Low light level detected ...')
         
     if Nchunks < 3:
         #Accurate results can actually be acquired with as few as 2 chunks
         #at 2 chunk limit small rpm fluctuations can lead to nan's
         #accuracy increases as nchunks increases, there may be a better way
             #ie %diff from convergent value? 
-        print('WAVEPLATE IS NOT ROTATING FAST ENOUGH FOR ACCURATE DATA')
+        print('Warning: Insufficient periods. Is waveplate spinning?')
+      
+    print(f'S = {np.around(S,3)}')
+        
+    x,y = polarization_ellipse(S[0],S[1],S[2],DOP)
     
-
-    S_0 = S0
-    S_1 = S1
-    S_2 = S2
-    S_3 = S3
-    nrm  = S0
-    S0/=nrm # Also I'm not too sure about this one, and if you do this then I think you'd need
-            # to divide by S0 in the DOP statement as well because if they're all divide by the
-            # same constant you aren't removing any dependence on S0 in the degree of polarization
-            # unless you can verify that S0/nrm == 1.
-    S1/=nrm
-    S2/=nrm
-    S3/=nrm
-  
-    print('S = ['+str(round(S0,3))+','+str(round(S1,3))+','+str(round(S2,3))+','+str(round(S3,3))+']')
-    
-    print('nrm',nrm)
-    
-    # degree of polarization
-    DOP = np.sqrt(S_1**2+S_2**2+S_3**2)/S_0/0.3099
-    
-    #aydans
-    #print('Degree of polarization without normaliztion:',np.sqrt(S_1**2+S_2**2+S_3**2)/S_0/0.34)
-    print("DOP with fudged adjustment:", DOP)
-    print("DOP:", np.sqrt(S1**2+S2**2+S3**2))
-    
-    #S = [1,S1,S2,S3]
-    S = [S0,S1,S2,S3]
-    x,y = polarization_ellipse(1,S1,S2,DOP)
-    
-    txt1.set_text('DOP: {}'.format(DOP))
-    txt2.set_text('Mean Signal: {}'.format(np.mean(y1)))
-    
-    #ax1.text(-1,0.95,'DOP: {}'.format(DOP),fontsize = 12)
-    #ax1.text(-1, 0.85, 'Mean Signal: {}'.format(np.mean(y1)), fontsize = 12)
-    
+    txt1.set_text(f'DOP: {DOP}')
+    txt2.set_text(f'Mean Signal: {np.mean(y1)}')
+        
     ln1.set_data(x,y)
     
     for i in range(len(S)):

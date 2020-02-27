@@ -47,7 +47,7 @@ def animate(frm):
     DP = .75
     phs = float(frm/18.)
     S = 3*np.array([1,DP*np.cos(phs)/np.sqrt(2),DP*np.sin(phs)/np.sqrt(2),DP/np.sqrt(2)])
-    y1 = sim_pol_data(S,w,t,ns_level=.05)
+    y1 = sim_pol_data(S,w,t,ns_level=.05) 
     y2 = 5*(np.mod(w*t,2*pi) < pi/12)
     trigz = extract_triggers(y2)
 
