@@ -7,8 +7,22 @@ fig,ax = plt.subplots()
 
 DP = .8
 
+samples_per_channel = 1000
+scan_rate = 5000.0
+Nsmp = samples_per_channel
+Ts = 1/scan_rate
+tTot = Ts*Nsmp
+
+w = 2*np.pi*5500/60
+t = np.linspace(0,tTot-Ts,Nsmp*5)
+
+print(f'{tTot-Ts} vs {2*pi/w*8.2}')
+
+# t = np.linspace(0,2*pi/w*8.2,5000)
+
+
 def sim_pol_data(S0,w0,t0,sig_level=1,ns_level = 0):
-    Npts = len(t)
+    Npts = len(t0)
     a = (2*S0[0]+S0[1])/4
     b = S0[3]/2
     c = S0[1]/4
@@ -23,19 +37,6 @@ def extract_triggers(trig_dat,thrsh=1):
             trigz = np.append(trigz,int(d))
     return trigz.astype(int)
 
-w = 2*pi*88.8
-t = np.linspace(0,2*pi/w*8.2,5000)
-
-
-# S = 2*np.array([1,.706*DP,0*DP,-.706*DP])
-# y = sim_pol_data(S,w,t)
-# triggered = 5*(np.mod(w*t,2*pi) < pi/12)
-
-# for k in range(len(trigz)-1):
-#     chonk = y[trigz[k]:trigz[k+1]]
-#     print(len(chonk))
-#     tt = np.linspace(0,2*pi,len(chonk))
-#     print(f'(C,S) = ({round(np.trapz(chonk*np.cos(2*tt),tt),3)}, {round(np.trapz(chonk*np.sin(2*tt),tt),3)})')
 ln1, = ax.plot(t,t*0)
 ln2, = ax.plot(t,t*0)
 ax.set_xlim(min(t),max(t))
@@ -55,15 +56,19 @@ def animate(frm):
     a0,n0,b0,c0,d0 = 0,0,0,0,0
     
     nck = len(trigz)-1
+    
+    Nroll = 0
+    
     for k in range(nck):
         chonk = y1[trigz[k]:trigz[k+1]]
+        Nroll = (Nroll*k + len(chonk))/(k+1)
         tt = np.linspace(0,2*pi,len(chonk))
         a0 += np.trapz(chonk,tt)/(2*pi*nck)
         n0 += np.trapz(chonk*np.cos(2*tt),tt)/(pi*nck)
         b0 += np.trapz(chonk*np.sin(2*tt),tt)/(pi*nck)
         c0 += np.trapz(chonk*np.cos(4*tt),tt)/(pi*nck)
         d0 += np.trapz(chonk*np.sin(4*tt),tt)/(pi*nck)
-    
+    print(f'Found {nck} ch0nX with Average length: {Nroll}')
     S0 = 2*(a0-c0)
     S1 = 4*c0
     S2 = 4*d0

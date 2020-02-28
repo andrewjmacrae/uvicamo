@@ -18,7 +18,7 @@
 # minimum number of triggers
 # minimum amount of intensity
 
-# Intial goals: Add simulation Mode, debug algorithm for (simulated) known system
+# Add simulation Mode, debug algorithm for (simulated) known system (done)
 
 we_live_in_a_simulation = True
 sim = we_live_in_a_simulation
@@ -30,7 +30,6 @@ import numpy as np
 from matplotlib import pyplot as plt, animation
 
 phs = .05*(1-sim)
-
 
 samples_per_channel = 1000
 scan_rate = 5000.0
@@ -55,19 +54,20 @@ tTot = Ts*Nsmp
 t = np.linspace(0,tTot-Ts,Nsmp)
 
 #create figure
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 10))
+# fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 10))
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
 
 ln1, = ax1.plot([], [], lw=2)
 
 #text variables to update
-txt1 = ax1.text(-1,0.95,'',fontsize = 12)
-txt2 = ax1.text(-1, 0.85, '', fontsize = 12)
+txt1 = ax1.text(-.95,0.9,'',fontsize = 12)
+# txt2 = ax1.text(-1, 0.85, '', fontsize = 12)
 
 #initialize bar graph as a variable outside animation function so
 #  we don't have to clear out data each frame
 bar = plt.bar([0, 1, 2, 3], [0, 0, 0, 0], align='center')
 
-def polarization_ellipse(S0,S1,S2,DOP):
+def polarization_ellipse(S0,S1,S2,DPol):
     '''
     given a stokes vector, this function plots the corresponding
     polarization ellipse
@@ -80,10 +80,10 @@ def polarization_ellipse(S0,S1,S2,DOP):
     #solve for psi, the angle from the x axis of the ellipse
     
     psi = 0.5*np.arctan2(S2,S1)
-
+    DPol = 1
     #define ellipse parameters from stokes vectors
-    a = np.sqrt(0.5*(S0+np.sqrt(S1**2+S2**2)))*DOP
-    b = np.sqrt(0.5*(S0-np.sqrt(S1**2+S2**2)))*DOP
+    a = np.sqrt(0.5*(S0+np.sqrt(S1**2+S2**2)))*DPol
+    b = np.sqrt(0.5*(S0-np.sqrt(S1**2+S2**2)))*DPol
     ba = b/a
     rot = np.matrix([[np.cos(psi), -1*np.sin(psi)],
                      [np.sin(psi), np.cos(psi)]])
@@ -138,17 +138,16 @@ def init_animation():
     ax2.set_title('Stokes Parameters')
     
     print('Phase: '+str(round(phs*180/2*np.pi,1))+' deg')
-    return ln1,txt1,txt2
+    return ln1,bar, txt1,
 
-def sim_pol_data(S0,w0,t0,sig_level=1,ns_level = 0,phase = 0):    
-    Npts = len(t)
+def sim_pol_data(S0,w0,t0,sig_level=1,ns_level = 0):
+    Npts = len(t0)
     a = (2*S0[0]+S0[1])/4
     b = S0[3]/2
     c = S0[1]/4
     d = S0[2]/4
     ns = ns_level*np.random.randn(Npts)
-    return a + b*np.sin(2*w0*t0 + phase) + c*np.cos(4*w0*t0 + phase) + d*np.sin(4*w0*t0 + phase) + ns
-
+    return a + b*np.sin(2*w0*t0) + c*np.cos(4*w0*t0) + d*np.sin(4*w0*t0) + ns
 
 def extract_triggers(trig_dat,thrsh=1):
     trigz = np.array([])
@@ -165,11 +164,11 @@ def animate_fun(idx):
         y1 = read_result.data[::2]
         y2 = read_result.data[1::2]
     else:
-        DP = .75
+        DP = 1
         Phi = float(idx/18.)
-        w = 2*np.pi*5500/60
+        w = 2*np.pi*1400/60
         S = 3*np.array([1,DP*np.cos(Phi)/np.sqrt(2),DP*np.sin(Phi)/np.sqrt(2),DP/np.sqrt(2)])
-        y1 = sim_pol_data(S,w,t,ns_level=.01)
+        y1 = sim_pol_data(S,w,t,ns_level=.00)
         y2 = 5*(np.mod(w*t,2*np.pi) < np.pi/12)
     
     trigz = extract_triggers(y2)
@@ -180,11 +179,13 @@ def animate_fun(idx):
 
 # I'm rewriting this part of the algorithm, if only because I'm too stoopid to git it. - AM
     a0,n0,b0,c0,d0 = 0,0,0,0,0
-    # C0w, C2w,S2w,C4w,S4w,Mnw = 0,0,0,0,0,0
     Nchunks = len(trigz)-1
+
+    Nroll = 0 # Holds rolling average of pts per chunk (PPC)
     
     for k in range(Nchunks):
         chunk = y1[trigz[k]:trigz[k+1]]
+        Nroll = (Nroll*k + len(chunk))/(k+1) # Update (PPC)
         wt = np.linspace(0,2*np.pi,len(chunk))
         a0 += np.trapz(chunk,wt)/(2*np.pi*Nchunks)
         n0 += np.trapz(chunk*np.cos(2*wt),wt)/(np.pi*Nchunks)
@@ -203,7 +204,10 @@ def animate_fun(idx):
     
     DOP = np.sqrt(S[1]**2 + S[2]**2 + S[3]**2)
 
-    if DOP-1 > .05:
+# All kinds of warnings!!!
+    if Nroll < 180:
+        print('Warning: insufficient points per revolution for accurate data - slow\'er down!')
+    if DOP-1 > .03:
         print(f'Warning: Possible unphysical DOP = {round(DOP,2)} measured...')
     if n0/nrm > 1e-2:
         print(f'Warning: Possible alignment error: large cos(2wt) component detected (S,C) = ({b0/nrm},{n0/nrm})')
@@ -222,19 +226,19 @@ def animate_fun(idx):
             #ie %diff from convergent value? 
         print('Warning: Insufficient periods. Is waveplate spinning?')
       
-    print(f'S = {np.around(S,3)}')
+    # print(f'S = {np.around(S,3)}')
         
     x,y = polarization_ellipse(S[0],S[1],S[2],DOP)
     
-    txt1.set_text(f'DOP: {DOP}')
-    txt2.set_text(f'Mean Signal: {np.mean(y1)}')
+    txt1.set_text(f'DOP: {round(DOP,3)}')
+    # txt2.set_text(f'Mean Signal: {np.mean(y1)}')
         
     ln1.set_data(x,y)
     
     for i in range(len(S)):
         bar[i].set_height(S[i])
     
-    return ln1, bar,
+    return ln1, bar, txt1,
     
 annie = animation.FuncAnimation(fig,animate_fun,init_func = init_animation, interval = 250)
 plt.show()
