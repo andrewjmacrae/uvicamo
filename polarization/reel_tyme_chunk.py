@@ -147,7 +147,7 @@ def sim_pol_data(S0,w0,t0,sig_level=1,ns_level = 0,phase = 0):
     c = S0[1]/4
     d = S0[2]/4
     ns = ns_level*np.random.randn(Npts)
-    return a + b*np.sin(2*w0*t + phase) + c*np.cos(4*w0*t + phase) + d*np.sin(4*w0*t + phase) + ns
+    return a + b*np.sin(2*w0*t0 + phase) + c*np.cos(4*w0*t0 + phase) + d*np.sin(4*w0*t0 + phase) + ns
 
 
 def extract_triggers(trig_dat,thrsh=1):
@@ -159,14 +159,14 @@ def extract_triggers(trig_dat,thrsh=1):
 
 def animate_fun(idx):
     global phs,t
-    Phi = float(idx/18.)
     if not sim:
         hat.a_in_scan_start(channel_mask, samples_per_channel, scan_rate, options)
         read_result = hat.a_in_scan_read(samples_per_channel, timeout)
         y1 = read_result.data[::2]
         y2 = read_result.data[1::2]
     else:
-        DP = 1
+        DP = .75
+        Phi = float(idx/18.)
         w = 2*np.pi*5500/60
         S = 3*np.array([1,DP*np.cos(Phi)/np.sqrt(2),DP*np.sin(Phi)/np.sqrt(2),DP/np.sqrt(2)])
         y1 = sim_pol_data(S,w,t,ns_level=.01)
@@ -182,7 +182,6 @@ def animate_fun(idx):
     a0,n0,b0,c0,d0 = 0,0,0,0,0
     # C0w, C2w,S2w,C4w,S4w,Mnw = 0,0,0,0,0,0
     Nchunks = len(trigz)-1
-    print(f'Working with {Nchunks} chunks')
     
     for k in range(Nchunks):
         chunk = y1[trigz[k]:trigz[k+1]]

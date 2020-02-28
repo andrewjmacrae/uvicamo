@@ -14,7 +14,7 @@ def sim_pol_data(S0,w0,t0,sig_level=1,ns_level = 0):
     c = S0[1]/4
     d = S0[2]/4
     ns = ns_level*np.random.randn(Npts)
-    return a + b*np.sin(2*w*t) + c*np.cos(4*w*t) + d*np.sin(4*w*t) + ns
+    return a + b*np.sin(2*w0*t0) + c*np.cos(4*w0*t0) + d*np.sin(4*w0*t0) + ns
 
 def extract_triggers(trig_dat,thrsh=1):
     trigz = np.array([])
@@ -27,18 +27,19 @@ w = 2*pi*88.8
 t = np.linspace(0,2*pi/w*8.2,5000)
 
 
-S = 2*np.array([1,.706*DP,0*DP,-.706*DP])
-y = sim_pol_data(S,w,t)
-triggered = 5*(np.mod(w*t,2*pi) < pi/12)
+# S = 2*np.array([1,.706*DP,0*DP,-.706*DP])
+# y = sim_pol_data(S,w,t)
+# triggered = 5*(np.mod(w*t,2*pi) < pi/12)
 
 # for k in range(len(trigz)-1):
 #     chonk = y[trigz[k]:trigz[k+1]]
 #     print(len(chonk))
 #     tt = np.linspace(0,2*pi,len(chonk))
 #     print(f'(C,S) = ({round(np.trapz(chonk*np.cos(2*tt),tt),3)}, {round(np.trapz(chonk*np.sin(2*tt),tt),3)})')
-ln1, = ax.plot(t,y)
-ln2, = ax.plot(t,triggered)
+ln1, = ax.plot(t,t*0)
+ln2, = ax.plot(t,t*0)
 ax.set_xlim(min(t),max(t))
+ax.set_ylim(-.1,5.1)
 
 def init_animation():
 	return ln1,ln2,
