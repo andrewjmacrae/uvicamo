@@ -164,7 +164,7 @@ def animate_fun(idx):
         y1 = read_result.data[::2]
         y2 = read_result.data[1::2]
     else:
-        DP = 1
+        DP = .65
         Phi = float(idx/18.)
         w = 2*np.pi*1400/60
         S = 3*np.array([1,DP*np.cos(Phi)/np.sqrt(2),DP*np.sin(Phi)/np.sqrt(2),DP/np.sqrt(2)])
