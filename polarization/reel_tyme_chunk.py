@@ -23,6 +23,10 @@
 we_live_in_a_simulation = True
 sim = we_live_in_a_simulation
 
+trace_debug_mode = True
+trace = trace_debug_mode
+
+
 if not sim:
     from daqhats import mcc118, OptionFlags, HatIDs, HatError
     from daqhats_utils import select_hat_device, enum_mask_to_string, chan_list_to_mask
@@ -54,8 +58,13 @@ tTot = Ts*Nsmp
 t = np.linspace(0,tTot-Ts,Nsmp)
 
 #create figure
-# fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 10))
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+if trace:
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
+    ln3, = ax3.plot([],[], lw=2, label = 'trace')
+else:
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5),\
+                                   sharey = True,\
+                                   gridspec_kw={'wspace': 0.1})
 
 ln1, = ax1.plot([], [], lw=2)
 
@@ -65,7 +74,7 @@ txt1 = ax1.text(-.95,0.9,'',fontsize = 12)
 
 #initialize bar graph as a variable outside animation function so
 #  we don't have to clear out data each frame
-bar = plt.bar([0, 1, 2, 3], [0, 0, 0, 0], align='center')
+bar = ax2.bar([0, 1, 2, 3], [0, 0, 0, 0], align='center')
 
 def polarization_ellipse(S0,S1,S2,DPol):
     '''
@@ -119,7 +128,7 @@ def init_animation():
     ax1.set_xlabel('$E_x$')
     ax1.set_ylabel('$E_y$')
     ax1.set_title('Polarization Ellipse')
-    ax1.grid(True)
+    ax1.grid()
     ax1.set_aspect('equal')
     
     #add unit circle around ellipse
@@ -131,14 +140,23 @@ def init_animation():
     #graph parameters for Bar graph
     ax2.set_xlim(-0.6, 3.6)
     ax2.set_ylim(-1.05, 1.05)
-    #ax2.set_ylim(-10, 10)
-    plt.xticks([0, 1, 2, 3], ['S0', 'S1', 'S2', 'S3'])
+    ax2.set_xticks([0, 1, 2, 3])
+    ax2.set_xticklabels(['S0', 'S1', 'S2', 'S3'])
     ax2.set_xlabel('Stokes Parameter')
-    ax2.set_ylabel('Value of Stokes Parameter')
+    #ax2.set_ylabel('Value of Stokes Parameter')
     ax2.set_title('Stokes Parameters')
     
+    if trace:
+        ax3.set_xlim(-1,1000)
+        ax3.set_ylim(0,4)
+        ax3.set_title('Trace')
+        ax3.grid()
+        
+        return ln1,bar,txt1,ln3,
+    
+    
     print('Phase: '+str(round(phs*180/2*np.pi,1))+' deg')
-    return ln1,bar, txt1,
+    return ln1,bar,txt1,
 
 def sim_pol_data(S0,w0,t0,sig_level=1,ns_level = 0):
     Npts = len(t0)
@@ -237,6 +255,11 @@ def animate_fun(idx):
     
     for i in range(len(S)):
         bar[i].set_height(S[i])
+
+    if trace:
+        ln3.set_data(range(len(y1)),y1)
+        
+        return ln1, bar, txt1, ln3,
     
     return ln1, bar, txt1,
     
