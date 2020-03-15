@@ -26,7 +26,6 @@ sim = we_live_in_a_simulation
 trace_debug_mode = True
 trace = trace_debug_mode
 
-
 if not sim:
     from daqhats import mcc118, OptionFlags, HatIDs, HatError
     from daqhats_utils import select_hat_device, enum_mask_to_string, chan_list_to_mask
@@ -36,7 +35,7 @@ from matplotlib import pyplot as plt, animation
 phs = .05*(1-sim)
 
 samples_per_channel = 1000
-scan_rate = 5000.0
+scan_rate = 20000.0
     
 if not sim:
     timeout=.5
@@ -76,7 +75,7 @@ txt1 = ax1.text(-.95,0.9,'',fontsize = 12)
 #  we don't have to clear out data each frame
 bar = ax2.bar([0, 1, 2, 3], [0, 0, 0, 0], align='center')
 
-def polarization_ellipse(S0,S1,S2,DPol):
+def polarization_ellipse(S0,S1,S2,S3,DPol):
     '''
     given a stokes vector, this function plots the corresponding
     polarization ellipse
@@ -85,14 +84,15 @@ def polarization_ellipse(S0,S1,S2,DPol):
     
     NOTE: S0 must be equal to 1 and S1,S2 should be normalized by S0
     '''
-
-    #solve for psi, the angle from the x axis of the ellipse
     
-    psi = 0.5*np.arctan2(S2,S1)
-    DPol = 1
     #define ellipse parameters from stokes vectors
-    a = np.sqrt(0.5*(S0+np.sqrt(S1**2+S2**2)))*DPol
-    b = np.sqrt(0.5*(S0-np.sqrt(S1**2+S2**2)))*DPol
+    psi = 0.5*np.arctan2(S2,S1)
+    
+    chi = 0.5*np.arcsin(S3/S0)
+    
+    a = 1*DPol
+    b = np.arctan(chi)*DPol
+    
     ba = b/a
     rot = np.matrix([[np.cos(psi), -1*np.sin(psi)],
                      [np.sin(psi), np.cos(psi)]])
@@ -153,7 +153,6 @@ def init_animation():
         ax3.grid()
         
         return ln1,bar,txt1,ln3,
-    
     
     print('Phase: '+str(round(phs*180/2*np.pi,1))+' deg')
     return ln1,bar,txt1,
@@ -245,8 +244,14 @@ def animate_fun(idx):
         print('Warning: Insufficient periods. Is waveplate spinning?')
       
     # print(f'S = {np.around(S,3)}')
+    
+    ###################DEBUG ZONE#####################
+    
+    print(f'Avg PPC: {Nroll}')
+    
+    ###################################################
         
-    x,y = polarization_ellipse(S[0],S[1],S[2],DOP)
+    x,y = polarization_ellipse(S[0],S[1],S[2],S[3],DOP)
     
     txt1.set_text(f'DOP: {round(DOP,3)}')
     # txt2.set_text(f'Mean Signal: {np.mean(y1)}')
@@ -258,6 +263,9 @@ def animate_fun(idx):
 
     if trace:
         ln3.set_data(range(len(y1)),y1)
+        ln3.set_data(range(len(chunk)),chunk)
+        ax3.set_ylim(min(chunk) + 0.001, max(chunk) +0.001)
+        ax3.set_xlim(0, len(chunk))
         
         return ln1, bar, txt1, ln3,
     
