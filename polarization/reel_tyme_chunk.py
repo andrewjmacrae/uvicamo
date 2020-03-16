@@ -26,6 +26,8 @@ sim = we_live_in_a_simulation
 trace_debug_mode = True
 trace = trace_debug_mode
 
+# HUUUUUGE CHANGE!!!
+
 if not sim:
     from daqhats import mcc118, OptionFlags, HatIDs, HatError
     from daqhats_utils import select_hat_device, enum_mask_to_string, chan_list_to_mask
