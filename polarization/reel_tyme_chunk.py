@@ -14,7 +14,6 @@
 #scale S123 by S0
 #make sure raw values refresh on plot (done)
 
-
 # minimum number of triggers
 # minimum amount of intensity
 
@@ -22,6 +21,16 @@
 
 we_live_in_a_simulation = True
 sim = we_live_in_a_simulation
+
+# ------- Simulation data ----
+sim_digitize = 1000*20/(2**12) # MCC118 is 12bit and +/- 10 V
+print(f'Using {sim_digitize} mV/bit')
+sim_siglevel = 1
+sim_ns_level = 0.0
+sim_DOP = 0.7
+sim_vbias = 0.0
+dev_perfect_qwp = 26.2 # percentage deviation from perfect QWP
+#----
 
 trace_debug_mode = True
 trace = trace_debug_mode
@@ -35,9 +44,11 @@ import numpy as np
 from matplotlib import pyplot as plt, animation
 
 phs = .05*(1-sim)
+wp_phi = np.arccos(-.4)
 
 samples_per_channel = 1000
 scan_rate = 20000.0
+auto_scale_y_trace = False
     
 if not sim:
     timeout=.5
@@ -71,7 +82,7 @@ ln1, = ax1.plot([], [], lw=2)
 
 #text variables to update
 txt1 = ax1.text(-.95,0.9,'',fontsize = 12)
-# txt2 = ax1.text(-1, 0.85, '', fontsize = 12)
+txt2 = ax1.text(-.95, 0.8, '', fontsize = 12, color = 'red')
 
 #initialize bar graph as a variable outside animation function so
 #  we don't have to clear out data each frame
@@ -150,7 +161,7 @@ def init_animation():
     
     if trace:
         ax3.set_xlim(-1,1000)
-        ax3.set_ylim(0,4)
+        ax3.set_ylim(0,1)
         ax3.set_title('Trace')
         ax3.grid()
         
@@ -159,14 +170,18 @@ def init_animation():
     print('Phase: '+str(round(phs*180/2*np.pi,1))+' deg')
     return ln1,bar,txt1,
 
-def sim_pol_data(S0,w0,t0,sig_level=1,ns_level = 0):
+def sim_pol_data(S0,w0,t0,sig_level=1,ns_level = 0,digitize_mV = 0,v_bias = 0,dev_wp = 0):
     Npts = len(t0)
-    a = (2*S0[0]+S0[1])/4
-    b = S0[3]/2
-    c = S0[1]/4
-    d = S0[2]/4
+    dphi = (np.pi/2)*(1+dev_wp/100) # Phase of QWP (nominally pi/2)
+    a = (2*S0[0]+S0[1])*(1+np.cos(dphi))/4
+    b = S0[3]*np.sin(dphi)/2
+    c = S0[1]*(1-np.cos(dphi))/4
+    d = S0[2]*(1-np.cos(dphi))/4
     ns = ns_level*np.random.randn(Npts)
-    return a + b*np.sin(2*w0*t0) + c*np.cos(4*w0*t0) + d*np.sin(4*w0*t0) + ns
+    trc =  (a + b*np.sin(2*w0*t0) + c*np.cos(4*w0*t0) + d*np.sin(4*w0*t0))*sig_level + ns + v_bias
+    if digitize_mV > 0:
+        trc = np.around(trc*1000/digitize_mV)*digitize_mV/1000
+    return trc
 
 def extract_triggers(trig_dat,thrsh=1):
     trigz = np.array([])
@@ -183,15 +198,18 @@ def animate_fun(idx):
         y1 = read_result.data[::2]
         y2 = read_result.data[1::2]
     else:
-        DP = .65
+        DP = sim_DOP
         Phi = float(idx/18.)
-        w = 2*np.pi*1400/60
+        w = 2*np.pi*5100/60
+        # --- Rotating Elliptical
         S = 3*np.array([1,DP*np.cos(Phi)/np.sqrt(2),DP*np.sin(Phi)/np.sqrt(2),DP/np.sqrt(2)])
-        y1 = sim_pol_data(S,w,t,ns_level=.00)
+        # --- Rotating Linear
+        # S = 3*np.array([1,DP*np.cos(Phi),DP*np.sin(Phi),0])
+        y1 = sim_pol_data(S,w,t,ns_level=sim_ns_level,sig_level = sim_siglevel,digitize_mV=sim_digitize, v_bias = sim_vbias,dev_wp=dev_perfect_qwp)
         y2 = 5*(np.mod(w*t,2*np.pi) < np.pi/12)
     
     trigz = extract_triggers(y2)
-        
+    
     if not sim:
         hat.a_in_scan_stop()
         hat.a_in_scan_cleanup()
@@ -200,23 +218,28 @@ def animate_fun(idx):
     a0,n0,b0,c0,d0 = 0,0,0,0,0
     Nchunks = len(trigz)-1
 
-    Nroll = 0 # Holds rolling average of pts per chunk (PPC)
+    Nroll = 0 # Holds rolling average of pts per chunk (PPC). Used for accuracy warning.
     
+    # For each chunk we calculate the 0,2w, and 4w comonents, averaged over all chunks
     for k in range(Nchunks):
         chunk = y1[trigz[k]:trigz[k+1]]
         Nroll = (Nroll*k + len(chunk))/(k+1) # Update (PPC)
         wt = np.linspace(0,2*np.pi,len(chunk))
-        a0 += np.trapz(chunk,wt)/(2*np.pi*Nchunks)
-        n0 += np.trapz(chunk*np.cos(2*wt),wt)/(np.pi*Nchunks)
-        b0 += np.trapz(chunk*np.sin(2*wt),wt)/(np.pi*Nchunks)
-        c0 += np.trapz(chunk*np.cos(4*wt),wt)/(np.pi*Nchunks)
-        d0 += np.trapz(chunk*np.sin(4*wt),wt)/(np.pi*Nchunks)
+        a0 += np.trapz(chunk,wt)
+        n0 += np.trapz(chunk*np.cos(2*wt+phs),wt)
+        b0 += np.trapz(chunk*np.sin(2*wt+phs),wt)
+        c0 += np.trapz(chunk*np.cos(4*wt+phs),wt)
+        d0 += np.trapz(chunk*np.sin(4*wt+phs),wt)
 
-    #computing Stokes Parameters from Fourier Shenanigans
-    S0 = 2*(a0-c0)
-    S1 = 4*c0
-    S2 = 4*d0
-    S3 = 2*b0
+    #computing Stokes Parameters from Fourier Shenanigans (see analysis document)
+    cd = np.cos(wp_phi)
+    sd = np.sin(wp_phi)
+    prf = 1./(Nchunks*np.pi)
+
+    S1 = 4*c0*prf/(1-cd)
+    S2 = 4*d0*prf/(1-cd)
+    S3 = 2*b0*prf/sd
+    S0 = a0*prf/(1+cd) - S1/2
 
     nrm = S0
     S = np.array([S0,S1,S2,S3])/nrm
@@ -249,14 +272,18 @@ def animate_fun(idx):
     
     ###################DEBUG ZONE#####################
     
-    print(f'Avg PPC: {Nroll}')
+    # print(f'Avg PPC: {Nroll}')
     
     ###################################################
         
     x,y = polarization_ellipse(S[0],S[1],S[2],S[3],DOP)
     
     txt1.set_text(f'DOP: {round(DOP,3)}')
-    # txt2.set_text(f'Mean Signal: {np.mean(y1)}')
+    if sim:
+        urr = 100*abs(DOP - sim_DOP)/sim_DOP
+        txt2.set_text(f'Error: {round(urr,1)}%')
+    else:
+        txt2.set_text(f'Mean Signal: {np.mean(y1)}')
         
     ln1.set_data(x,y)
     
@@ -266,7 +293,8 @@ def animate_fun(idx):
     if trace:
         ln3.set_data(range(len(y1)),y1)
         ln3.set_data(range(len(chunk)),chunk)
-        ax3.set_ylim(min(chunk) + 0.001, max(chunk) +0.001)
+        if auto_scale_y_trace:
+            ax3.set_ylim(min(chunk) + 0.001, max(chunk) +0.001)
         ax3.set_xlim(0, len(chunk))
         
         return ln1, bar, txt1, ln3,
