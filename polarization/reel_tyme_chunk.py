@@ -26,10 +26,10 @@ sim = we_live_in_a_simulation
 sim_digitize = 1000*20/(2**12) # MCC118 is 12bit and +/- 10 V
 print(f'Using {sim_digitize} mV/bit')
 sim_siglevel = 1
-sim_ns_level = 0.01
+sim_ns_level = 0.0
 sim_DOP = 0.7
 sim_vbias = 0.0
-dev_perfect_qwp = 20. # percentage deviation from perfect QWP
+dev_perfect_qwp = 26.2 # percentage deviation from perfect QWP
 #----
 
 trace_debug_mode = True
@@ -42,10 +42,11 @@ import numpy as np
 from matplotlib import pyplot as plt, animation
 
 phs = .05*(1-sim)
+wp_phi = np.arccos(-.4)
 
 samples_per_channel = 1000
 scan_rate = 20000.0
-auto_scale_y_trace = True
+auto_scale_y_trace = False
     
 if not sim:
     timeout=.5
@@ -199,9 +200,9 @@ def animate_fun(idx):
         Phi = float(idx/18.)
         w = 2*np.pi*5100/60
         # --- Rotating Elliptical
-        # S = 3*np.array([1,DP*np.cos(Phi)/np.sqrt(2),DP*np.sin(Phi)/np.sqrt(2),DP/np.sqrt(2)])
+        S = 3*np.array([1,DP*np.cos(Phi)/np.sqrt(2),DP*np.sin(Phi)/np.sqrt(2),DP/np.sqrt(2)])
         # --- Rotating Linear
-        S = 3*np.array([1,DP*np.cos(Phi),DP*np.sin(Phi),0])
+        # S = 3*np.array([1,DP*np.cos(Phi),DP*np.sin(Phi),0])
         y1 = sim_pol_data(S,w,t,ns_level=sim_ns_level,sig_level = sim_siglevel,digitize_mV=sim_digitize, v_bias = sim_vbias,dev_wp=dev_perfect_qwp)
         y2 = 5*(np.mod(w*t,2*np.pi) < np.pi/12)
     
@@ -215,23 +216,28 @@ def animate_fun(idx):
     a0,n0,b0,c0,d0 = 0,0,0,0,0
     Nchunks = len(trigz)-1
 
-    Nroll = 0 # Holds rolling average of pts per chunk (PPC)
+    Nroll = 0 # Holds rolling average of pts per chunk (PPC). Used for accuracy warning.
     
+    # For each chunk we calculate the 0,2w, and 4w comonents, averaged over all chunks
     for k in range(Nchunks):
         chunk = y1[trigz[k]:trigz[k+1]]
         Nroll = (Nroll*k + len(chunk))/(k+1) # Update (PPC)
         wt = np.linspace(0,2*np.pi,len(chunk))
-        a0 += np.trapz(chunk,wt)/(2*np.pi*Nchunks)
-        n0 += np.trapz(chunk*np.cos(2*wt+phs),wt)/(np.pi*Nchunks)
-        b0 += np.trapz(chunk*np.sin(2*wt+phs),wt)/(np.pi*Nchunks)
-        c0 += np.trapz(chunk*np.cos(4*wt+phs),wt)/(np.pi*Nchunks)
-        d0 += np.trapz(chunk*np.sin(4*wt+phs),wt)/(np.pi*Nchunks)
+        a0 += np.trapz(chunk,wt)
+        n0 += np.trapz(chunk*np.cos(2*wt+phs),wt)
+        b0 += np.trapz(chunk*np.sin(2*wt+phs),wt)
+        c0 += np.trapz(chunk*np.cos(4*wt+phs),wt)
+        d0 += np.trapz(chunk*np.sin(4*wt+phs),wt)
 
-    #computing Stokes Parameters from Fourier Shenanigans
-    S0 = 2*(a0-c0)
-    S1 = 4*c0
-    S2 = 4*d0
-    S3 = 2*b0
+    #computing Stokes Parameters from Fourier Shenanigans (see analysis document)
+    cd = np.cos(wp_phi)
+    sd = np.sin(wp_phi)
+    prf = 1./(Nchunks*np.pi)
+
+    S1 = 4*c0*prf/(1-cd)
+    S2 = 4*d0*prf/(1-cd)
+    S3 = 2*b0*prf/sd
+    S0 = a0*prf/(1+cd) - S1/2
 
     nrm = S0
     S = np.array([S0,S1,S2,S3])/nrm
