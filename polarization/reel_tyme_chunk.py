@@ -236,11 +236,11 @@ def animate_fun(idx):
     sd = np.sin(wp_phi)
     prf = 1./(Nchunks*np.pi)
 
-    S1 = 4*c0*prf/(1-cd)
-    S2 = 4*d0*prf/(1-cd)
-    S3 = 2*b0*prf/sd
-    S0 = a0*prf/(1+cd) - S1/2
-
+    S0 = 2*prf*(a0 - (1+cd)*c0)
+    S1 = 4*prf*cd
+    S2 = 4*prf*(d0 + c0*cd)/(1-cd)
+    S3 = -2*prf*c0/sd
+    
     nrm = S0
     S = np.array([S0,S1,S2,S3])/nrm
     
