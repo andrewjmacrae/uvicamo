@@ -22,6 +22,12 @@
 we_live_in_a_simulation = True
 sim = we_live_in_a_simulation
 
+if not sim:
+    from daqhats import mcc118, OptionFlags, HatIDs, HatError
+    from daqhats_utils import select_hat_device, enum_mask_to_string, chan_list_to_mask
+import numpy as np
+from matplotlib import pyplot as plt, animation
+
 # ------- Simulation data ----
 sim_digitize = 1000*20/(2**12) # MCC118 is 12bit and +/- 10 V
 print(f'Using {sim_digitize} mV/bit')
@@ -29,7 +35,7 @@ sim_siglevel = 1
 sim_ns_level = 0.0
 sim_DOP = 0.7
 sim_vbias = 0.0
-dev_perfect_qwp = 26.2 # percentage deviation from perfect QWP
+wp_phase = np.pi/2#1.982 # percentage deviation from perfect QWP
 #----
 
 trace_debug_mode = True
@@ -37,14 +43,8 @@ trace = trace_debug_mode
 
 # HUUUUUGE UNCHANGE!!!
 
-if not sim:
-    from daqhats import mcc118, OptionFlags, HatIDs, HatError
-    from daqhats_utils import select_hat_device, enum_mask_to_string, chan_list_to_mask
-import numpy as np
-from matplotlib import pyplot as plt, animation
-
 phs = .05*(1-sim)
-wp_phi = np.arccos(-.4)
+wp_phi = np.pi/2#np.arccos(-.4)
 
 samples_per_channel = 1000
 scan_rate = 20000.0
@@ -82,8 +82,8 @@ ln1, = ax1.plot([], [], lw=2)
 
 #text variables to update
 txt1 = ax1.text(-.95,0.9,'',fontsize = 12)
-txt2 = ax1.text(-.95, 0.8, '', fontsize = 12, color = 'red')
-
+txt2 = ax1.text(-.95, 0.8, '', fontsize = 12, color = 'blue')
+txt_err = ax1.text(-1.25,-1.35,'', fontsize = 10, color = 'red')
 #initialize bar graph as a variable outside animation function so
 #  we don't have to clear out data each frame
 bar = ax2.bar([0, 1, 2, 3], [0, 0, 0, 0], align='center')
@@ -161,22 +161,21 @@ def init_animation():
     
     if trace:
         ax3.set_xlim(-1,1000)
-        ax3.set_ylim(0,1)
+        ax3.set_ylim(0,3)
         ax3.set_title('Trace')
         ax3.grid()
         
-        return ln1,bar,txt1,ln3,
+        return ln1,bar,txt1,ln3,txt_err
     
     print('Phase: '+str(round(phs*180/2*np.pi,1))+' deg')
     return ln1,bar,txt1,
 
-def sim_pol_data(S0,w0,t0,sig_level=1,ns_level = 0,digitize_mV = 0,v_bias = 0,dev_wp = 0):
+def sim_pol_data(S0,w0,t0,sig_level=1,ns_level = 0,digitize_mV = 0,v_bias = 0,dphi = np.pi/2):
     Npts = len(t0)
-    dphi = (np.pi/2)*(1+dev_wp/100) # Phase of QWP (nominally pi/2)
-    a = (2*S0[0]+S0[1])*(1+np.cos(dphi))/4
-    b = S0[3]*np.sin(dphi)/2
-    c = S0[1]*(1-np.cos(dphi))/4
-    d = S0[2]*(1-np.cos(dphi))/4
+    a = (2*S0[0]+S0[1]*(1+np.cos(dphi)))/4
+    b = -S0[3]*np.sin(dphi)/2
+    c = S0[1]/4
+    d = (S0[2]*(1-np.cos(dphi)) - S0[1]*np.cos(dphi))/4
     ns = ns_level*np.random.randn(Npts)
     trc =  (a + b*np.sin(2*w0*t0) + c*np.cos(4*w0*t0) + d*np.sin(4*w0*t0))*sig_level + ns + v_bias
     if digitize_mV > 0:
@@ -205,7 +204,7 @@ def animate_fun(idx):
         S = 3*np.array([1,DP*np.cos(Phi)/np.sqrt(2),DP*np.sin(Phi)/np.sqrt(2),DP/np.sqrt(2)])
         # --- Rotating Linear
         # S = 3*np.array([1,DP*np.cos(Phi),DP*np.sin(Phi),0])
-        y1 = sim_pol_data(S,w,t,ns_level=sim_ns_level,sig_level = sim_siglevel,digitize_mV=sim_digitize, v_bias = sim_vbias,dev_wp=dev_perfect_qwp)
+        y1 = sim_pol_data(S,w,t,ns_level=sim_ns_level,sig_level = sim_siglevel,digitize_mV=sim_digitize, v_bias = sim_vbias,dphi=wp_phase)
         y2 = 5*(np.mod(w*t,2*np.pi) < np.pi/12)
     
     trigz = extract_triggers(y2)
@@ -246,27 +245,33 @@ def animate_fun(idx):
     
     DOP = np.sqrt(S[1]**2 + S[2]**2 + S[3]**2)
 
+    estr = 'warnings: '
 # All kinds of warnings!!!
     if Nroll < 180:
-        print('Warning: insufficient points per revolution for accurate data - slow\'er down!')
+        # print('Warning: insufficient points per revolution for accurate data - slow\'er down!')
+        estr+=f'PPC too low ({int(Nroll)})    '
     if DOP-1 > .03:
-        print(f'Warning: Possible unphysical DOP = {round(DOP,2)} measured...')
+        # print(f'Warning: Possible unphysical DOP = {round(DOP,2)} measured...')
+        estr += f'Unphysical DOP ({round(DOP,3)})    '
     if n0/nrm > 1e-2:
-        print(f'Warning: Possible alignment error: large cos(2wt) component detected (S,C) = ({b0/nrm},{n0/nrm})')
+        # print(f'Warning: Possible alignment error: large cos(2wt) component detected (S,C) = ({b0/nrm},{n0/nrm})')
+        estr += f'non-zero cos(2w)    '
         
     if np.mean(y1) < 0.08:
         #just by eye for now
         #this value is not independent from gain of the detector
         #how about S/N? This would require a noise reading before the experiment
             #or would it... ?
-        print('Warning: Low light level detected ...')
+        # print('Warning: Low light level detected ...')
+        estr += f'Light level too low    '
         
     if Nchunks < 3:
         #Accurate results can actually be acquired with as few as 2 chunks
         #at 2 chunk limit small rpm fluctuations can lead to nan's
         #accuracy increases as nchunks increases, there may be a better way
             #ie %diff from convergent value? 
-        print('Warning: Insufficient periods. Is waveplate spinning?')
+        # print('Warning: Insufficient periods. Is waveplate spinning?')
+        estr += f'Insufficient chunks    '
       
     # print(f'S = {np.around(S,3)}')
     
@@ -275,7 +280,7 @@ def animate_fun(idx):
     # print(f'Avg PPC: {Nroll}')
     
     ###################################################
-        
+    txt_err.set_text(estr)
     x,y = polarization_ellipse(S[0],S[1],S[2],S[3],DOP)
     
     txt1.set_text(f'DOP: {round(DOP,3)}')
