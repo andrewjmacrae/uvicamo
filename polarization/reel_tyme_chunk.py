@@ -1,23 +1,5 @@
-# First task is to get the reading and plotting multiple channels -DONE (indexing is weird)
-# Then determine time for reading (without plotting) to get bound on fps - DONE (less than 5 ms lag)
-# Then get continuous scan DONE (had to use stop() and clear() or it barfed)
-# Then Apply chunking alogorithm (Done)
-# Then extract Fourier coefficients via integration (Done)
-# Then calibrate phase !! (Done)
-# Then extract Stokes Params and plot Pol. ellipse (Done)
-# Then plot bar graph (Done) and poincare (Not so Done)
-# add raw values to plots (done)
-# scale ellipse by degree of polarization (done)
-
-#clean up
-#DOP in a function
-#scale S123 by S0
-#make sure raw values refresh on plot (done)
-
-# minimum number of triggers
-# minimum amount of intensity
-
-# Add simulation Mode, debug algorithm for (simulated) known system (done)
+# reel_tyme_chunk.py
+# A. MacRae, A. McKay, S. Wilkenson
 
 we_live_in_a_simulation = True
 sim = we_live_in_a_simulation
