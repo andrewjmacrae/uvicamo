@@ -75,8 +75,8 @@ def polarization_ellipse(S):
     given a stokes vector, this function plots the corresponding
     polarization ellipse
 
-    returns a list of x and y values on the Ex-Ey plane
-    '''
+    returns an array of x and y values on the Ex-Ey plane
+    '''    
     
     S/=S[0]
     
