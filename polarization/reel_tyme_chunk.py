@@ -14,7 +14,7 @@ from matplotlib import pyplot as plt, animation
 sim_digitize = 1000*20/(2**12) # MCC118 is 12bit and +/- 10 V
 sim_siglevel = 1
 sim_ns_level = 0.03
-sim_DOP = 0.7
+sim_DOP = .7
 sim_vbias = 0.00
 wp_phase = 1.982 # percentage deviation from perfect QWP
 sim_phase_offset = 0.404
@@ -70,26 +70,30 @@ txt_err = ax1.text(-1.25,-1.35,'', fontsize = 10, color = 'red')
 bar = ax2.bar([0, 1, 2, 3], [0, 0, 0, 0], align='center')
 bar2 = ax2.bar([0, 1, 2, 3], [0, 0, 0, 0], align='edge',alpha = .3)
 
-def polarization_ellipse(S0,S1,S2,S3,DPol):
+def polarization_ellipse(S):
     '''
     given a stokes vector, this function plots the corresponding
     polarization ellipse
 
     returns a list of x and y values on the Ex-Ey plane
-    
-    NOTE: S0 must be equal to 1 and S1,S2 should be normalized by S0
     '''
     
-    #define ellipse parameters from stokes vectors
-    psi = 0.5*np.arctan2(S2,S1)
+    S/=S[0]
     
-# TODO --- put a flag and check for NaN here
+    DPol = np.sqrt(sum(S[1:]**2))
+    for k in range(len(S)):
+        if abs(S[k]) > 1:
+            S[k] = S[k]/abs(S[k])
 
-    s30 = np.max([-1,np.min([S3/S0,1])])
-    chi = 0.5*np.arcsin(s30)
+    S1 = S[1]/DPol
+    S2 = S[2]/DPol
+    S3 = S[3]/DPol
+
+    psi = 0.5*np.arctan2(S2,S1)
+    chi = 0.5*np.arcsin(S3)
     
-    a = 1*DPol
-    b = np.arctan(chi)*DPol
+    a = 1
+    b = np.tan(chi)
     
     ba = b/a
     rot = np.matrix([[np.cos(psi), -1*np.sin(psi)],
@@ -113,10 +117,10 @@ def polarization_ellipse(S0,S1,S2,S3,DPol):
         x2.append(float((rot*XY2)[0]))
 
     #x2,y2 reversed in order so that there is continuity in the ellipse (no line through the middle)
-    x = x1+x2[::-1]
-    y = y1+y2[::-1]
+    x = (x1+x2[::-1])
+    y = (y1+y2[::-1])
 
-    return x, y
+    return np.array(x)*DPol, np.array(y)*DPol
 
 def init_animation():    
     
@@ -176,14 +180,20 @@ def extract_triggers(trig_dat,thrsh=1):
 
 def animate_fun(idx):
     global phs,t, S_sim
+    estr = 'warnings: '
     if sim:
         DP = sim_DOP
         Phi = float(idx/18.)
-        w = 2*np.pi*5100/60
-        
-        # S_sim = 3*np.array([1,DP*np.cos(Phi)/np.sqrt(2),DP*np.sin(Phi)/np.sqrt(2),DP/np.sqrt(2)])
-        # S_sim = 3*np.array([1,DP*np.cos(Phi),DP*np.sin(Phi),0])
-        S_sim = 3*np.array([1,0,0,DP])
+        w = 2*np.pi*5100/60        
+        if np.mod(int(idx/50),3) == 0:
+            S_sim = 3*np.array([1,DP*np.cos(Phi)/np.sqrt(2),DP*np.sin(Phi)/np.sqrt(2),DP/np.sqrt(2)])
+            estr = 'ellip-pol. '+estr
+        elif np.mod(int(idx/50),3) == 1:            
+            S_sim = 3*np.array([1,DP*np.cos(Phi),DP*np.sin(Phi),0])
+            estr = 'lin-pol. '+estr
+        else:
+            S_sim = 3*np.array([1,0,0,DP])
+            estr = 'circ-pol. '+estr
         y1 = sim_pol_data(S_sim,w,t,ns_level=sim_ns_level,sig_level = sim_siglevel,digitize_mV=sim_digitize, v_bias = sim_vbias,dphi=wp_phase,ofst = sim_phase_offset)
         y2 = 5*(np.mod(w*t,2*np.pi) < np.pi/12)
     else:
@@ -232,7 +242,7 @@ def animate_fun(idx):
     
     DOP = np.sqrt(S[1]**2 + S[2]**2 + S[3]**2)
 
-    estr = 'warnings: '
+    # estr = 'warnings: '
 # All kinds of warnings!!!
     if Nroll < 180:
         # print('Warning: insufficient points per revolution for accurate data - slow\'er down!')
@@ -268,7 +278,7 @@ def animate_fun(idx):
     
     ###################################################
     txt_err.set_text(estr)
-    x,y = polarization_ellipse(S[0],S[1],S[2],S[3],DOP)
+    x,y = polarization_ellipse(S)
     
     txt1.set_text(f'DOP: {round(DOP,3)}')
     if sim:
