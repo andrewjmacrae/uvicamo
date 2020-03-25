@@ -32,7 +32,7 @@ from matplotlib import pyplot as plt, animation
 sim_digitize = 1000*20/(2**12) # MCC118 is 12bit and +/- 10 V
 sim_siglevel = 1
 sim_ns_level = 0.03
-sim_DOP = 0.7
+sim_DOP = 1.0
 sim_vbias = 0.00
 wp_phase = 1.982 # percentage deviation from perfect QWP
 sim_phase_offset = 0.404
