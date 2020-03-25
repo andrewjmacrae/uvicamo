@@ -30,21 +30,20 @@ from matplotlib import pyplot as plt, animation
 
 # ------- Simulation data ----
 sim_digitize = 1000*20/(2**12) # MCC118 is 12bit and +/- 10 V
-print(f'Using {sim_digitize} mV/bit')
 sim_siglevel = 1
-sim_ns_level = 0.0
+sim_ns_level = 0.03
 sim_DOP = 0.7
-sim_vbias = 0.0
-wp_phase = np.pi/2#1.982 # percentage deviation from perfect QWP
+sim_vbias = 0.00
+wp_phase = 1.982 # percentage deviation from perfect QWP
+sim_phase_offset = 0.404
+S_sim = np.array([1,0,0,1])
 #----
 
 trace_debug_mode = True
 trace = trace_debug_mode
 
-# HUUUUUGE UNCHANGE!!!
-
-phs = .05*(1-sim)
-wp_phi = np.pi/2#np.arccos(-.4)
+phs = .404
+wp_phi = np.arccos(-.4)
 
 samples_per_channel = 1000
 scan_rate = 20000.0
@@ -87,6 +86,7 @@ txt_err = ax1.text(-1.25,-1.35,'', fontsize = 10, color = 'red')
 #initialize bar graph as a variable outside animation function so
 #  we don't have to clear out data each frame
 bar = ax2.bar([0, 1, 2, 3], [0, 0, 0, 0], align='center')
+bar2 = ax2.bar([0, 1, 2, 3], [0, 0, 0, 0], align='edge',alpha = .3)
 
 def polarization_ellipse(S0,S1,S2,S3,DPol):
     '''
@@ -101,7 +101,10 @@ def polarization_ellipse(S0,S1,S2,S3,DPol):
     #define ellipse parameters from stokes vectors
     psi = 0.5*np.arctan2(S2,S1)
     
-    chi = 0.5*np.arcsin(S3/S0)
+# TODO --- put a flag and check for NaN here
+
+    s30 = np.max([-1,np.min([S3/S0,1])])
+    chi = 0.5*np.arcsin(s30)
     
     a = 1*DPol
     b = np.arctan(chi)*DPol
@@ -170,14 +173,14 @@ def init_animation():
     print('Phase: '+str(round(phs*180/2*np.pi,1))+' deg')
     return ln1,bar,txt1,
 
-def sim_pol_data(S0,w0,t0,sig_level=1,ns_level = 0,digitize_mV = 0,v_bias = 0,dphi = np.pi/2):
+def sim_pol_data(S0,w0,t0,sig_level=1,ns_level = 0,digitize_mV = 0,v_bias = 0,dphi = np.pi/2,ofst = 0):
     Npts = len(t0)
-    a = (2*S0[0]+S0[1]*(1+np.cos(dphi)))/4
+    a = S0[0]/2 + (1+np.cos(dphi))*S0[1]/4
     b = -S0[3]*np.sin(dphi)/2
-    c = S0[1]/4
-    d = (S0[2]*(1-np.cos(dphi)) - S0[1]*np.cos(dphi))/4
+    c = (1-np.cos(dphi))*S0[1]/4
+    d = (1-np.cos(dphi))*S0[2]/4
     ns = ns_level*np.random.randn(Npts)
-    trc =  (a + b*np.sin(2*w0*t0) + c*np.cos(4*w0*t0) + d*np.sin(4*w0*t0))*sig_level + ns + v_bias
+    trc =  (a + b*np.sin(2*w0*t0 + ofst) + c*np.cos(4*w0*t0 + ofst) + d*np.sin(4*w0*t0 + ofst))*sig_level + ns + v_bias
     if digitize_mV > 0:
         trc = np.around(trc*1000/digitize_mV)*digitize_mV/1000
     return trc
@@ -190,23 +193,23 @@ def extract_triggers(trig_dat,thrsh=1):
     return trigz.astype(int)
 
 def animate_fun(idx):
-    global phs,t
-    if not sim:
-        hat.a_in_scan_start(channel_mask, samples_per_channel, scan_rate, options)
-        read_result = hat.a_in_scan_read(samples_per_channel, timeout)
-        y1 = read_result.data[::2]
-        y2 = read_result.data[1::2]
-    else:
+    global phs,t, S_sim
+    if sim:
         DP = sim_DOP
         Phi = float(idx/18.)
         w = 2*np.pi*5100/60
-        # --- Rotating Elliptical
-        S = 3*np.array([1,DP*np.cos(Phi)/np.sqrt(2),DP*np.sin(Phi)/np.sqrt(2),DP/np.sqrt(2)])
-        # --- Rotating Linear
-        # S = 3*np.array([1,DP*np.cos(Phi),DP*np.sin(Phi),0])
-        y1 = sim_pol_data(S,w,t,ns_level=sim_ns_level,sig_level = sim_siglevel,digitize_mV=sim_digitize, v_bias = sim_vbias,dphi=wp_phase)
+        
+        # S_sim = 3*np.array([1,DP*np.cos(Phi)/np.sqrt(2),DP*np.sin(Phi)/np.sqrt(2),DP/np.sqrt(2)])
+        # S_sim = 3*np.array([1,DP*np.cos(Phi),DP*np.sin(Phi),0])
+        S_sim = 3*np.array([1,0,0,DP])
+        y1 = sim_pol_data(S_sim,w,t,ns_level=sim_ns_level,sig_level = sim_siglevel,digitize_mV=sim_digitize, v_bias = sim_vbias,dphi=wp_phase,ofst = sim_phase_offset)
         y2 = 5*(np.mod(w*t,2*np.pi) < np.pi/12)
-    
+    else:
+        hat.a_in_scan_start(channel_mask, samples_per_channel, scan_rate, options)
+        read_result = hat.a_in_scan_read(samples_per_channel, timeout)
+        y1 = read_result.data[::2]
+        y2 = read_result.data[1::2]  
+
     trigz = extract_triggers(y2)
     
     if not sim:
@@ -224,7 +227,7 @@ def animate_fun(idx):
         chunk = y1[trigz[k]:trigz[k+1]]
         Nroll = (Nroll*k + len(chunk))/(k+1) # Update (PPC)
         wt = np.linspace(0,2*np.pi,len(chunk))
-        a0 += np.trapz(chunk,wt)
+        a0 += np.trapz(chunk,wt)/2
         n0 += np.trapz(chunk*np.cos(2*wt+phs),wt)
         b0 += np.trapz(chunk*np.sin(2*wt+phs),wt)
         c0 += np.trapz(chunk*np.cos(4*wt+phs),wt)
@@ -235,12 +238,14 @@ def animate_fun(idx):
     sd = np.sin(wp_phi)
     prf = 1./(Nchunks*np.pi)
 
-    S0 = 2*prf*(a0 - (1+cd)*c0)
-    S1 = 4*prf*cd
-    S2 = 4*prf*(d0 + c0*cd)/(1-cd)
-    S3 = -2*prf*c0/sd
-    
+    S0 = 2*prf*(a0 - c0*(1+cd)/(1-cd))
+    S1 = 4*prf*c0/(1-cd)
+    S2 = 4*prf*d0/(1-cd)
+    S3 = -2*prf*b0/sd
+
     nrm = S0
+
+    n0*=prf/nrm
     S = np.array([S0,S1,S2,S3])/nrm
     
     DOP = np.sqrt(S[1]**2 + S[2]**2 + S[3]**2)
@@ -253,9 +258,9 @@ def animate_fun(idx):
     if DOP-1 > .03:
         # print(f'Warning: Possible unphysical DOP = {round(DOP,2)} measured...')
         estr += f'Unphysical DOP ({round(DOP,3)})    '
-    if n0/nrm > 1e-2:
+    if n0 > 4e-2:
         # print(f'Warning: Possible alignment error: large cos(2wt) component detected (S,C) = ({b0/nrm},{n0/nrm})')
-        estr += f'non-zero cos(2w)    '
+        estr += f'non-zero cos(2w): {round(n0,2)} cf {round(b0*prf/nrm,2)}    '
         
     if np.mean(y1) < 0.08:
         #just by eye for now
@@ -294,6 +299,8 @@ def animate_fun(idx):
     
     for i in range(len(S)):
         bar[i].set_height(S[i])
+        if sim:
+            bar2[i].set_height(S_sim[i]/S_sim[0])
 
     if trace:
         ln3.set_data(range(len(y1)),y1)
