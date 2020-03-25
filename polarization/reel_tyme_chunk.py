@@ -88,30 +88,27 @@ txt_err = ax1.text(-1.25,-1.35,'', fontsize = 10, color = 'red')
 bar = ax2.bar([0, 1, 2, 3], [0, 0, 0, 0], align='center')
 bar2 = ax2.bar([0, 1, 2, 3], [0, 0, 0, 0], align='edge',alpha = .3)
 
-def polarization_ellipse(S0,S1,S2,S3):
+def polarization_ellipse(S):
     '''
     given a stokes vector, this function plots the corresponding
     polarization ellipse
 
     returns a list of x and y values on the Ex-Ey plane
-    
-    NOTE: S0 must be equal to 1 and S1,S2 should be normalized by S0
     '''
     
-    #define ellipse parameters from stokes vectors
+    S/=S[0]
+    
+    DPol = np.sqrt(sum(S[1:]**2))
+    for k in range(len(S)):
+        if abs(S[k]) > 1:
+            S[k] = S[k]/abs(S[k])
 
-    S1/=max([S0,S1])
-    S2/=max([S0,S2])
-    S3/=max([S0,S3])
-    S0 = 1
-    DPol = np.sqrt(S1**2 + S2**2 + S3**2)
+    S1 = S[1]/DPol
+    S2 = S[2]/DPol
+    S3 = S[3]/DPol
 
     psi = 0.5*np.arctan2(S2,S1)
-
-# TODO --- put a flag and check for NaN here
-
-    s30 = np.max([-1,np.min([S3,1])])
-    chi = 0.5*np.arcsin(s30)
+    chi = 0.5*np.arcsin(S3)
     
     a = 1
     b = np.tan(chi)
@@ -138,10 +135,10 @@ def polarization_ellipse(S0,S1,S2,S3):
         x2.append(float((rot*XY2)[0]))
 
     #x2,y2 reversed in order so that there is continuity in the ellipse (no line through the middle)
-    x = x1+x2[::-1]
-    y = y1+y2[::-1]
+    x = (x1+x2[::-1])
+    y = (y1+y2[::-1])
 
-    return x, y
+    return np.array(x)*DPol, np.array(y)*DPol
 
 def init_animation():    
     
@@ -206,10 +203,10 @@ def animate_fun(idx):
         DP = sim_DOP
         Phi = float(idx/18.)
         w = 2*np.pi*5100/60        
-        if np.mod(int(idx/50),3) == 1.1:
+        if np.mod(int(idx/50),3) == 0:
             S_sim = 3*np.array([1,DP*np.cos(Phi)/np.sqrt(2),DP*np.sin(Phi)/np.sqrt(2),DP/np.sqrt(2)])
             estr = 'ellip-pol. '+estr
-        elif np.mod(int(idx/50),3) == 0.1:            
+        elif np.mod(int(idx/50),3) == 1:            
             S_sim = 3*np.array([1,DP*np.cos(Phi),DP*np.sin(Phi),0])
             estr = 'lin-pol. '+estr
         else:
@@ -299,7 +296,7 @@ def animate_fun(idx):
     
     ###################################################
     txt_err.set_text(estr)
-    x,y = polarization_ellipse(S[0],S[1],S[2],S[3])
+    x,y = polarization_ellipse(S)
     
     txt1.set_text(f'DOP: {round(DOP,3)}')
     if sim:
