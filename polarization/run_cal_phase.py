@@ -1,4 +1,4 @@
-run_cal_phase.py
+# run_cal_phase.py
 
 # Grab a trace with several periods and determine phase offset by minimizing cos(2wt) term
 
