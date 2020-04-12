@@ -1,7 +1,7 @@
 # reel_tyme_chunk.py
 # A. MacRae, A. McKay, S. Wilkenson
 
-we_live_in_a_simulation = True
+we_live_in_a_simulation = False
 sim = we_live_in_a_simulation
 
 if not sim:
@@ -24,8 +24,10 @@ S_sim = np.array([1,0,0,1])
 trace_debug_mode = True
 trace = trace_debug_mode
 
-phs = .404
-wp_phi = np.arccos(-.4)
+phs = .676
+#wp_phi = np.arccos(-.508)
+wp_phi = np.arccos(-.418)
+bg_level = 0.0
 
 samples_per_channel = 1000
 scan_rate = 20000.0
@@ -203,6 +205,7 @@ def animate_fun(idx):
         y2 = read_result.data[1::2]  
 
     trigz = extract_triggers(y2)
+    y1 = np.array(y1) - bg_level
     
     if not sim:
         hat.a_in_scan_stop()
@@ -216,7 +219,7 @@ def animate_fun(idx):
     
     # For each chunk we calculate the 0,2w, and 4w comonents, averaged over all chunks
     for k in range(Nchunks):
-        chunk = y1[trigz[k]:trigz[k+1]]
+        chunk = np.array(y1[trigz[k]:trigz[k+1]])
         Nroll = (Nroll*k + len(chunk))/(k+1) # Update (PPC)
         wt = np.linspace(0,2*np.pi,len(chunk))
         a0 += np.trapz(chunk,wt)/2

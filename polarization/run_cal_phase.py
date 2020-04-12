@@ -35,32 +35,55 @@ Ts = 1/scan_rate
 tTot = Ts*Nsmp
 t = np.linspace(0,tTot-Ts,Nsmp)
 
-hat.a_in_scan_start(channel_mask, samples_per_channel, scan_rate, options)
-read_result = hat.a_in_scan_read(samples_per_channel, timeout)
+N_traces = 9
+phase_zeros = np.zeros(N_traces)
 
-y1 = read_result.data[::2]
-y2 = read_result.data[1::2]  
+for kk in range(N_traces):
+    hat.a_in_scan_start(channel_mask, samples_per_channel, scan_rate, options)
+    read_result = hat.a_in_scan_read(samples_per_channel, timeout)
 
-trigz = extract_triggers(y2)
+    y1 = read_result.data[::2]
+    y2 = read_result.data[1::2]  
 
-hat.a_in_scan_stop()
-hat.a_in_scan_cleanup()
+    trigz = extract_triggers(y2)
+    Nchunks = len(trigz)-1
 
-enns = array([])
+    hat.a_in_scan_stop()
+    hat.a_in_scan_cleanup()
+    
+    enns = np.array([])
 
-phases = linspace(0,2*pi,1000)
+    phases = np.linspace(0,2*np.pi,1000)
+    n0 = 0
+    
+    for phs in phases:
+        for k in range(Nchunks):
+            chunk = y1[trigz[k]:trigz[k+1]]
+            wt = np.linspace(0,2*np.pi,len(chunk))
+            n0 += np.trapz(chunk*np.cos(2*wt+phs),wt)
+        enns = np.append(enns,n0/Nchunks)
 
-for phs in phases:
-	for k in range(Nchunks):
-        chunk = y1[trigz[k]:trigz[k+1]]
-        wt = np.linspace(0,2*np.pi,len(chunk))
-        n0 += np.trapz(chunk*np.cos(2*wt+phs),wt)
-    enns = append(enns,n0/Nchunks)
+    z_xings = np.array([])
+    for k in range(len(enns)-2):
+        if (enns[k] <= 0 and enns[k+1] > 0) or (enns[k] >= 0 and enns[k+1] < 0):
+            z_xings = np.append(k,z_xings)
+    
+    z_xings = z_xings.astype(int)
+    print(phases[z_xings])
+    phase_zeros[kk] = min(phases[z_xings])
 
-fig, (ax1,ax2) = subplots(1,2,figsize = [13,4])
+print(phase_zeros)
+pzero = np.mean(phase_zeros)
+pstd = np.sqrt(np.var(phase_zeros))
+pstderr = pstd/np.sqrt(N_traces)
+
+print('Zero crossing:' + str(round(pzero,3)) + '+/-' +str(round(pstderr,3)))
+
+fig, (ax1,ax2) = plt.subplots(1,2,figsize = [13,4])
 
 ax1.plot(phases,enns)
+ax1.grid(True)
 ax2.plot(t,y1,lw=2)
 ax2.plot(t,y2,'--',lw=1)
-
+ax1.plot(pzero,0,'o')
 plt.show()
