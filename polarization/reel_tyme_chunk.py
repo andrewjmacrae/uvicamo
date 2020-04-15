@@ -1,7 +1,7 @@
 # reel_tyme_chunk.py
 # A. MacRae, A. McKay, S. Wilkenson
 
-we_live_in_a_simulation = False
+we_live_in_a_simulation = True
 sim = we_live_in_a_simulation
 
 if not sim:
@@ -11,22 +11,23 @@ import numpy as np
 from matplotlib import pyplot as plt, animation
 
 # ------- Simulation data ----
-sim_digitize = 1000*20/(2**12) # MCC118 is 12bit and +/- 10 V
+sim_digitize = 1000*20/(2**18) # MCC118 is 12bit and +/- 10 V
 sim_siglevel = 1
-sim_ns_level = 0.03
-sim_DOP = .7
-sim_vbias = 0.00
-wp_phase = 1.982 # percentage deviation from perfect QWP
-sim_phase_offset = 0.404
+sim_ns_level = 0.00
+sim_DOP = 1
+sim_vbias = 0.0
+wp_phase = np.pi/2 # percentage deviation from perfect QWP
+sim_phase_offset = 0
 S_sim = np.array([1,0,0,1])
 #----
 
 trace_debug_mode = True
 trace = trace_debug_mode
 
-phs = .676
+phs = 0
 #wp_phi = np.arccos(-.508)
-wp_phi = np.arccos(-.418)
+# wp_phi = np.arccos(-.418)
+wp_phi = np.pi/2
 bg_level = 0.0
 
 samples_per_channel = 1000
@@ -67,6 +68,7 @@ ln1, = ax1.plot([], [], lw=2)
 txt1 = ax1.text(-.95,0.9,'',fontsize = 12)
 txt2 = ax1.text(-.95, 0.8, '', fontsize = 12, color = 'blue')
 txt_err = ax1.text(-1.25,-1.35,'', fontsize = 10, color = 'red')
+txt_dbg = ax1.text(-1.25,-1.45,'', fontsize = 10, color = 'green')
 #initialize bar graph as a variable outside animation function so
 #  we don't have to clear out data each frame
 bar = ax2.bar([0, 1, 2, 3], [0, 0, 0, 0], align='center')
@@ -156,7 +158,7 @@ def init_animation():
         ax3.set_title('Trace')
         ax3.grid()
         
-        return ln1,bar,txt1,ln3,txt_err
+        return ln1,bar,txt1,ln3,txt_err,txt_dbg
     
     print('Phase: '+str(round(phs*180/2*np.pi,1))+' deg')
     return ln1,bar,txt1,
@@ -183,6 +185,7 @@ def extract_triggers(trig_dat,thrsh=1):
 def animate_fun(idx):
     global phs,t, S_sim
     estr = 'warnings: '
+    debugstr = 'debug: '
     if sim:
         DP = sim_DOP
         Phi = float(idx/18.)
@@ -214,7 +217,7 @@ def animate_fun(idx):
 # I'm rewriting this part of the algorithm, if only because I'm too stoopid to git it. - AM
     a0,n0,b0,c0,d0 = 0,0,0,0,0
     Nchunks = len(trigz)-1
-
+    
     Nroll = 0 # Holds rolling average of pts per chunk (PPC). Used for accuracy warning.
     
     # For each chunk we calculate the 0,2w, and 4w comonents, averaged over all chunks
@@ -273,14 +276,16 @@ def animate_fun(idx):
         # print('Warning: Insufficient periods. Is waveplate spinning?')
         estr += f'Insufficient chunks    '
       
-    # print(f'S = {np.around(S,3)}')
-    
+    debugstr += f'{Nchunks} chonks.   '
+    debugstr += f'{round(Nroll)} PPC.   '
+    debugstr += f'S = {np.around(S,3)}'
     ###################DEBUG ZONE#####################
     
     # print(f'Avg PPC: {Nroll}')
     
     ###################################################
     txt_err.set_text(estr)
+    txt_dbg.set_text(debugstr)
     x,y = polarization_ellipse(S)
     
     txt1.set_text(f'DOP: {round(DOP,3)}')
