@@ -12,11 +12,11 @@ from matplotlib import pyplot as plt, animation
 
 # ------- Simulation data ----
 sim_digitize = 1000*20/(2**18) # MCC118 is 12bit and +/- 10 V
-sim_siglevel = 1
-sim_ns_level = 0.00
-sim_DOP = 1
-sim_vbias = 0.0
-wp_phase = np.pi/2 # percentage deviation from perfect QWP
+sim_siglevel = 3
+sim_ns_level = 0.05
+sim_DOP = .8
+sim_vbias = 0.002
+wp_phase = np.pi/2 # True retardance of Waveplate (ideally pi/2)
 sim_phase_offset = 0
 S_sim = np.array([1,0,0,1])
 #----
@@ -81,8 +81,7 @@ def polarization_ellipse(S):
 
     returns an array of x and y values on the Ex-Ey plane
     '''    
-    
-    S/=S[0]
+    S = S/S[0]
     
     DPol = np.sqrt(sum(S[1:]**2))
     for k in range(len(S)):
@@ -189,18 +188,19 @@ def animate_fun(idx):
     if sim:
         DP = sim_DOP
         Phi = float(idx/18.)
-        w = 2*np.pi*5100/60        
+        w = 2*np.pi*5100/60
         if np.mod(int(idx/50),3) == 0:
             S_sim = 3*np.array([1,DP*np.cos(Phi)/np.sqrt(2),DP*np.sin(Phi)/np.sqrt(2),DP/np.sqrt(2)])
             estr = 'ellip-pol. '+estr
-        elif np.mod(int(idx/50),3) == 1:            
+        elif np.mod(int(idx/50),3) == 1:
             S_sim = 3*np.array([1,DP*np.cos(Phi),DP*np.sin(Phi),0])
             estr = 'lin-pol. '+estr
         else:
             S_sim = 3*np.array([1,0,0,DP])
             estr = 'circ-pol. '+estr
         y1 = sim_pol_data(S_sim,w,t,ns_level=sim_ns_level,sig_level = sim_siglevel,digitize_mV=sim_digitize, v_bias = sim_vbias,dphi=wp_phase,ofst = sim_phase_offset)
-        y2 = 5*(np.mod(w*t,2*np.pi) < np.pi/12)
+    # Note, need to subtract a sample here else your triggers are one point out of phase c.f. trace
+        y2 = 5*(np.mod(w*(t-Ts),2*np.pi) < np.pi/12)
     else:
         hat.a_in_scan_start(channel_mask, samples_per_channel, scan_rate, options)
         read_result = hat.a_in_scan_read(samples_per_channel, timeout)
@@ -281,12 +281,12 @@ def animate_fun(idx):
     debugstr += f'S = {np.around(S,3)}'
     ###################DEBUG ZONE#####################
     
-    # print(f'Avg PPC: {Nroll}')
+    estr += f'|b0/n0| = {np.round(np.abs(b0/n0),1)}'
     
     ###################################################
     txt_err.set_text(estr)
     txt_dbg.set_text(debugstr)
-    x,y = polarization_ellipse(S)
+    x,y = polarization_ellipse(S_sim)
     
     txt1.set_text(f'DOP: {round(DOP,3)}')
     if sim:
