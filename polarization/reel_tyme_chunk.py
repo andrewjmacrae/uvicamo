@@ -1,7 +1,7 @@
 # reel_tyme_chunk.py
 # A. MacRae, A. McKay, S. Wilkenson
 
-we_live_in_a_simulation = True
+we_live_in_a_simulation = False
 sim = we_live_in_a_simulation
 
 if not sim:
@@ -24,11 +24,11 @@ S_sim = np.array([1,0,0,1])
 trace_debug_mode = True
 trace = trace_debug_mode
 
-phs = 0
+phs = .70
 #wp_phi = np.arccos(-.508)
-# wp_phi = np.arccos(-.418)
-wp_phi = np.pi/2
-bg_level = 0.0
+wp_phi = np.arccos(-.458)
+# wp_phi = np.pi/2
+bg_level = 0.034
 
 samples_per_channel = 1000
 scan_rate = 20000.0
@@ -286,7 +286,7 @@ def animate_fun(idx):
     ###################################################
     txt_err.set_text(estr)
     txt_dbg.set_text(debugstr)
-    x,y = polarization_ellipse(S_sim)
+    x,y = polarization_ellipse(S)
     
     txt1.set_text(f'DOP: {round(DOP,3)}')
     if sim:
