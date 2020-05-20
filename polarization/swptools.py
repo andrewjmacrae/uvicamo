@@ -30,11 +30,14 @@ def get_stokes_from_chunk(cnk,wp_ret = np.pi/2,phs_ofst = 0,verbose = False):
     
     return np.array([S0,S1,S2,S3])/nrm
 
-def extract_triggers(trig_dat,thrsh=1,schmidt = 0):
+def extract_triggers(trig_dat,thrsh=1,schmidt = 10):
     trigz = np.array([])
+    deadzone = 0
     for d in range(len(trig_dat)-1):
-        if trig_dat[d+1] - trig_dat[d] > thrsh:
+        deadzone = max(0,deadzone-1)
+        if trig_dat[d+1] - trig_dat[d] > thrsh and deadzone is 0:
             trigz = np.append(trigz,int(d))
+            deadzone = schmidt
     return trigz.astype(int)
 
 def get_polarization_ellipse(S,n_points = 200,scale_by_dop = True, verbose = False):
