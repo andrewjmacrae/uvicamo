@@ -51,7 +51,7 @@ else:
 		samples_per_channel = daqpams['samples_per_channel']
 		scan_rate = daqpams['scan_rate']
 		channels = daqpams['channels']
-		bg_level = daqpams['bg_level']
+		timeout = daqpams['timeout']
 		Nsmp = samples_per_channel
 		Ts = 1/scan_rate
 		tTot = Ts*Nsmp
@@ -147,7 +147,7 @@ def animate_fun(idx):
     else:
         hat.a_in_scan_start(channel_mask, samples_per_channel, scan_rate, options)
         read_result = hat.a_in_scan_read(samples_per_channel, timeout)
-        y1 = read_result.data[::2]
+        y1 = np.array(read_result.data[::2]) - bg_level
         y2 = read_result.data[1::2]
         hat.a_in_scan_stop()
         hat.a_in_scan_cleanup()
@@ -164,7 +164,7 @@ def animate_fun(idx):
     S = np.zeros(4)
 
     for k in range(Nchunks):
-        chunk = y1[trigz[k]:trigz[k+1]]
+        chunk = np.array(y1[trigz[k]:trigz[k+1]])
         #get_stokes_from_chunk(cnk,wp_ret = np.pi/2,phs_ofst = 0,verbose = False):
         S += swp.get_stokes_from_chunk(chunk,wp_ret = wp_phi,phs_ofst = trigger_phase,verbose = False)
         Nroll = (Nroll*k + len(chunk))/(k+1) # Update (PPC)

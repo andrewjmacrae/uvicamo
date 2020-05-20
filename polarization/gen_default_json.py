@@ -45,7 +45,8 @@ if os.path.isfile(daq_settings_file):
 else:
 	daq_dict = {	'samples_per_channel': 1000,
 					'scan_rate': 20000,
-					'channels': [0.2]
+					'channels': [0,2],
+                                        'timeout': 5
 				}
 	print(f'No DAQ json file found. Creating file: {daq_settings_file}')
 	with open(daq_settings_file,'w') as f:

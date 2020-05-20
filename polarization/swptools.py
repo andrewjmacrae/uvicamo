@@ -20,6 +20,11 @@ def get_stokes_from_chunk(cnk,wp_ret = np.pi/2,phs_ofst = 0,verbose = False):
     
     nrm = S0
     
+    if nrm == 0:
+        if verbose:
+            print('Error! S0 = 0. Something went terribly wrong')
+        nrm=1 #This is probably sketchy
+    
     if n0 > np.sqrt(S1**2 + S2**2 + S3**2)*1e-3 and verbose:
         print('Warning, large sin(2w) conponent detected. Check alignment!')
     
