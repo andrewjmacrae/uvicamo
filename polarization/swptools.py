@@ -87,3 +87,16 @@ def get_polarization_ellipse(S,n_points = 200,scale_by_dop = True, verbose = Fal
     y = (y1+y2[::-1])
 
     return np.array(x)*DPol, np.array(y)*DPol
+
+def sim_pol_data(S0,w0,t0,sig_level=1,ns_level = 0,digitize_mV = 0,v_bias = 0,dphi = np.pi/2,ofst = 0):
+    Npts = len(t0)
+    a = S0[0]/2 + (1+np.cos(dphi))*S0[1]/4
+    b = -S0[3]*np.sin(dphi)/2
+    c = (1-np.cos(dphi))*S0[1]/4
+    d = (1-np.cos(dphi))*S0[2]/4
+    ns = ns_level*np.random.randn(Npts)
+    trc =  (a + b*np.sin(2*w0*t0 + ofst) + c*np.cos(4*w0*t0 + ofst) + d*np.sin(4*w0*t0 + ofst))*sig_level + ns + v_bias
+    if digitize_mV > 0:
+        trc = np.around(trc*1000/digitize_mV)*digitize_mV/1000
+    return trc
+ 
