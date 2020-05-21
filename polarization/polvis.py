@@ -62,9 +62,7 @@ else:
 			address = select_hat_device(HatIDs.MCC_118)
 			hat = mcc118(address)
 			options = OptionFlags.CONTINUOUS
-			address = select_hat_device(HatIDs.MCC_118)
-			hat = mcc118(address)
-
+            
 if not os.path.isfile(swp_settings_file):
 	print(f'Error: settings file {swp_settings_file} not found.')
 	print('Run \'gen_default_json.py\' to generate default file first.')
