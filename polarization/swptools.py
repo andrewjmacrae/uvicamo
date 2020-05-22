@@ -5,10 +5,10 @@ def get_stokes_from_chunk(cnk,wp_ret = np.pi/2,phs_ofst = 0,verbose = False):
 
     wt = np.linspace(0,2*np.pi,len(cnk))
     a0 = np.trapz(cnk,wt)/(2*np.pi)
-    n0 = np.trapz(cnk*np.cos(2*wt+phs_ofst),wt)/np.pi
-    b0 = np.trapz(cnk*np.sin(2*wt+phs_ofst),wt)/np.pi
-    c0 = np.trapz(cnk*np.cos(4*wt+phs_ofst),wt)/np.pi
-    d0 = np.trapz(cnk*np.sin(4*wt+phs_ofst),wt)/np.pi
+    n0 = np.trapz(cnk*np.cos(2*(wt-phs_ofst)),wt)/np.pi
+    b0 = np.trapz(cnk*np.sin(2*(wt-phs_ofst)),wt)/np.pi
+    c0 = np.trapz(cnk*np.cos(4*(wt-phs_ofst)),wt)/np.pi
+    d0 = np.trapz(cnk*np.sin(4*(wt-phs_ofst)),wt)/np.pi
 
     cd = np.cos(wp_ret)
     sd = np.sin(wp_ret)
@@ -103,7 +103,7 @@ def sim_pol_data(S0,w0,t0,sig_level=1,ns_level = 0,digitize_mV = 0,v_bias = 0,dp
     c = (1-np.cos(dphi))*S0[1]/4
     d = (1-np.cos(dphi))*S0[2]/4
     ns = ns_level*np.random.randn(Npts)
-    trc =  (a + b*np.sin(2*w0*t0 + ofst) + c*np.cos(4*w0*t0 + ofst) + d*np.sin(4*w0*t0 + ofst))*sig_level + ns + v_bias
+    trc =  (a + b*np.sin(2*w0*t0 - 4*np.pi*ofst) + c*np.cos(4*w0*t0 - 8*np.pi*ofst) + d*np.sin(4*w0*t0 - 8*np.pi*ofst))*sig_level + ns + v_bias
     if digitize_mV > 0:
         trc = np.around(trc*1000/digitize_mV)*digitize_mV/1000
     return trc

@@ -141,6 +141,7 @@ def animate_fun(idx):
             S_sim = 3*np.array([1,0,0,DP])
             estr = 'circ-pol. '+estr
         y1 = swp.sim_pol_data(S_sim,w,t,ns_level=sim_ns_level,sig_level = sim_siglevel,digitize_mV=sim_digitize, v_bias = sim_bg_level,dphi=sim_wp_phi,ofst = sim_trigger_phase)
+        # y1 = swp.sim_pol_data(S_sim,w,t,ofst = sim_trigger_phase)
         y2 = 5*(np.mod(w*t,2*np.pi) < np.pi/12)
     else:
         hat.a_in_scan_start(channel_mask, samples_per_channel, scan_rate, options)
@@ -212,10 +213,11 @@ def animate_fun(idx):
 
     
     ln3.set_data(range(len(y1)),y1)
-    ln3.set_data(range(len(chunk)),chunk)
-    if auto_scale_y_trace:
-        ax3.set_ylim(min(chunk) + 0.001, max(chunk) +0.001)
-    ax3.set_xlim(0, len(chunk))
+    ax3.set_xlim(0, len(y1))
+    # ln3.set_data(range(len(chunk)),chunk)
+    # if auto_scale_y_trace:
+    #     ax3.set_ylim(min(chunk) + 0.001, max(chunk) +0.001)
+    # ax3.set_xlim(0, len(chunk))
     
     return ln1, bar, txt1, ln3,
     

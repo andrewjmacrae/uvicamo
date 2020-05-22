@@ -64,7 +64,7 @@ for kk in range(N_traces):
         for k in range(Nchunks):
             chunk = y1[trigz[k]:trigz[k+1]]
             wt = np.linspace(0,2*np.pi,len(chunk))
-            n0 += np.trapz(chunk*np.cos(2*wt+phs),wt)
+            n0 += np.trapz(chunk*np.cos(2*(wt-phs)),wt)
         enns = np.append(enns,n0/Nchunks)
 
     z_xings = np.array([])
@@ -73,8 +73,11 @@ for kk in range(N_traces):
             z_xings = np.append(k,z_xings)
     
     z_xings = z_xings.astype(int)
-    print(phases[z_xings])
-    phase_zeros[kk] = min(phases[z_xings])
+    # This makes it more accurate but will give terrible results if index is 0. (Don't think this is possible?)
+    print((phases[z_xings] + phases[z_xings-1])/2)
+    phase_zeros[kk] = (phases[z_xings] + phases[z_xings-1])/2
+    # print((phases[z_xings])
+    # phase_zeros[kk] = min(phases[z_xings])
 
 print(phase_zeros)
 pzero = np.mean(phase_zeros)
