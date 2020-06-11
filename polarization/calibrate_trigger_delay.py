@@ -6,9 +6,9 @@ import numpy as np
 from matplotlib import pyplot as plt
 from daqhats import mcc118, OptionFlags, HatIDs, HatError
 from daqhats_utils import select_hat_device, enum_mask_to_string, chan_list_to_mask
-import swptools as swptools
+import swptools as swp
 import json
-
+import os.path
 daq_settings_file = 'settings/daqsettings.json'
 swp_settings_file = 'settings/swpsettings.json'
 
@@ -49,7 +49,7 @@ for kk in range(N_traces):
     y1 = read_result.data[::2]
     y2 = read_result.data[1::2]  
 
-    trigz = extract_triggers(y2)
+    trigz = swp.extract_triggers(y2)
     Nchunks = len(trigz)-1
 
     hat.a_in_scan_stop()
@@ -73,11 +73,8 @@ for kk in range(N_traces):
             z_xings = np.append(k,z_xings)
     
     z_xings = z_xings.astype(int)
-    # This makes it more accurate but will give terrible results if index is 0. (Don't think this is possible?)
-    print((phases[z_xings] + phases[z_xings-1])/2)
-    phase_zeros[kk] = (phases[z_xings] + phases[z_xings-1])/2
-    # print((phases[z_xings])
-    # phase_zeros[kk] = min(phases[z_xings])
+    print((phases[z_xings]))
+    phase_zeros[kk] = min(phases[z_xings])
 
 print(phase_zeros)
 pzero = np.mean(phase_zeros)

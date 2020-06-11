@@ -2,9 +2,10 @@ import json
 import numpy as np
 
 # Enter max, min, and bg voltage here
-v_max = 2.84
-v_min = 1.74
-v_bg = 0.04
+v_max = 6.76
+v_min = 1.82
+v_bg = 0.036
+
 
 eta = (v_min-v_bg)/(v_max-v_bg)
 phs = np.arccos(2*eta-1)
