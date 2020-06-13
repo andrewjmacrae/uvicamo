@@ -2,9 +2,9 @@ import json
 import numpy as np
 
 # Enter max, min, and bg voltage here
-v_max = 6.76
-v_min = 1.82
-v_bg = 0.036
+v_max = 5.76
+v_min = 1.56
+v_bg = 0.033
 
 
 eta = (v_min-v_bg)/(v_max-v_bg)

@@ -58,9 +58,9 @@ for kk in range(N_traces):
     enns = np.array([])
 
     phases = np.linspace(0,2*np.pi,1000)
-    n0 = 0
     
     for phs in phases:
+        n0 = 0
         for k in range(Nchunks):
             chunk = y1[trigz[k]:trigz[k+1]]
             wt = np.linspace(0,2*np.pi,len(chunk))
