@@ -194,7 +194,7 @@ def animate_fun(idx):
     if Nchunks < 3:
         estr += f'Insufficient chunks    '
       
-    txt_err.set_text(estr)
+    txt_err.set_text(f'({round(np.mean(y1),2)},{round(S[1],2)},{round(S[2],2)},{round(S[3],2)})\n'+estr)
     x,y = swp.get_polarization_ellipse(S)
     
     txt1.set_text(f'DOP: {round(DOP,3)}')
