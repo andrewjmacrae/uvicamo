@@ -6,8 +6,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 import csv
 
-f_base = '/home/pi/Documents/data/June11/'
-csv_name = 'LP_139.5.csv'
+f_base = '/home/pi/Documents/data/Nov24/'
+csv_name = 'circ_1.csv'
 
 from daqhats import mcc118, OptionFlags, HatIDs, HatError
 from daqhats_utils import select_hat_device, enum_mask_to_string, chan_list_to_mask

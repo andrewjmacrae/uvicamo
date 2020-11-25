@@ -5,9 +5,10 @@ import os.path
 import json
 import numpy as np
 
-#f_base = '/home/pi/Documents/data/June11/'
-f_base = 'data/Nov17_2020_data/'
-csv_name = 'rot_lin.csv'
+#f_base = '/'
+f_base = '/home/pi/Documents/data/Nov24/'
+
+csv_name = 'rot_circ.csv'
 f_name = f_base+csv_name
 
 if len(sys.argv) == 2:
@@ -63,7 +64,7 @@ else:
 hat.a_in_scan_start(channel_mask, samples_per_channel, scan_rate, options)
 read_result = hat.a_in_scan_read(samples_per_channel, timeout)
 
-y1 = read_result.data[::2]
+y1 = np.array(read_result.data[::2]) - bg_level
 y2 = read_result.data[1::2]  
 
 hat.a_in_scan_stop()
@@ -79,7 +80,11 @@ S = np.zeros(4)
 for k in range(Nchunks):
     chunk = np.array(y1[trigz[k]:trigz[k+1]])
     S += swp.get_stokes_from_chunk(chunk,wp_ret = wp_phi,phs_ofst = trigger_phase,verbose = False)
+S/=Nchunks
+S /= S[0]
+DOP = np.sqrt(S[1]**2 + S[2]**2 + S[3]**2)
 
+print(f'DOP = {DOP}')
 
 with open(f_name, 'a', newline = '\n') as cfile:
     wrtr = csv.writer(cfile,delimiter = ',')
