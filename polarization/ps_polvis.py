@@ -1,9 +1,10 @@
 # ps_polvis.py
 
-run_offline = False
+run_offline = True
 
 import swptools as swp
 import numpy as np
+from matplotlib import pyplot as plt, animation
 from mpl_toolkits.mplot3d import axes3d
 import json
 import os.path
@@ -86,11 +87,16 @@ fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
 ln1, = ax1.plot([], [], lw=2)
 bar = ax2.bar([0, 1, 2, 3], [0, 0, 0, 0], align='center')
 bar2 = ax2.bar([0, 1, 2, 3], [0, 0, 0, 0], align='edge',alpha = .3)
-ln3, = ax3.plot([],[], lw=2, label = 'trace')
+#`ln3, = ax3.plot([],[], lw=2, label = 'trace')
+ax3 = fig.add_subplot(1,3,3, projection = '3d')
 #text variables to update
 txt1 = ax1.text(-.95,0.9,'',fontsize = 12)
 txt2 = ax1.text(-.95, 0.8, '', fontsize = 12, color = 'blue')
 txt_err = ax1.text(-1.25,-1.35,'', fontsize = 10, color = 'red')
+
+pt = ax3.scatter([0.5],[0.5],[0.707],facecolor='tab:blue',s=100)
+ln3, = ax3.plot(np.array([0,0.5]),np.array([0,0.0]),np.array([0,0.0]),color='tab:red',lw=3)
+
 
 def init_animation():        
     #graph parameters for Ellipse
@@ -116,13 +122,47 @@ def init_animation():
     ax2.set_xlabel('Stokes Parameter')
     #ax2.set_ylabel('Value of Stokes Parameter')
     ax2.set_title('Stokes Parameters')
+    # Now we begin the munumental task of creating the 3D plot:
+    # Begin by defining a set of points for the sphere.
+    u = np.linspace(0.0,2*np.pi,30)
+    v = np.linspace(0.0,np.pi,60)
+    lu = np.size(u)
+    lv = np.size(v)
+    X = np.zeros((lu,lv))
+    Y = np.zeros((lu,lv))
+    Z = np.zeros((lu,lv))
+
+    for uu in range(0,lu):
+        for vv in range(0,lv):
+            X[uu,vv]= np.cos(u[uu])*np.sin(v[vv])
+            Y[uu,vv]= np.sin(u[uu])*np.sin(v[vv])
+            Z[uu,vv]= np.cos(v[vv])
+    srf = ax3.plot_surface(X, Y, Z,alpha=.2,color = 'gray')
+    # Now add the axes and spherical gridlines:
+    tht = np.linspace(0,2*np.pi,360)
+    ax3.plot([-1,1],[0,0],[0,0],lw=2,color = 'black')
+    ax3.plot([0,0],[-1,1],[0,0],lw=2,color = 'black')
+    ax3.plot([0,0],[0,0],[-1,1],lw=2,color = 'black')
+    ax3.plot(np.cos(tht),np.sin(tht),0*tht,color = 'gray',alpha = 0.6)
     
-    ax3.set_xlim(-1,1000)
-    ax3.set_ylim(0,3)
-    ax3.set_title('Trace')
-    ax3.grid()
-        
-    return ln1,bar,txt1,ln3,txt_err
+    ax3.plot(np.cos(tht),0*tht,np.sin(tht),color = 'black',alpha = 0.5)
+    ax3.plot(0*tht,np.sin(tht),np.cos(tht),color = 'black',alpha = 0.5)
+    ax3.plot(np.sin(tht),np.cos(tht),0*tht,color = 'black',alpha = 0.5)
+
+    # Add the labels
+    fsz = 16
+    ax3.text(1.3,0,0,'H',color='tab:blue',fontsize=fsz)
+    ax3.text(-1.3,0,0,'V',color='tab:blue',fontsize=fsz)
+    ax3.text(0,-1.3,0,'-45',color='tab:red',fontsize=fsz)
+    ax3.text(0,1.1,0,'+45',color='tab:red',fontsize=fsz)
+    ax3.text(0,0,1.2,'R',color='tab:green',fontsize=fsz)
+    ax3.text(0,0,-1.3,'L',color='tab:green',fontsize=fsz)
+
+    ax3.view_init(elev=30, azim=30)
+
+    for phi0 in np.linspace(-np.pi/2,np.pi/2,12):
+        ax3.plot(np.cos(tht)*np.cos(phi0),np.sin(tht)*np.cos(phi0),np.sin(phi0),color = 'gray',alpha = 0.4) 
+    return ln1,bar,txt1,txt_err
     
 def animate_fun(idx):
     global phs,t, S_sim
@@ -141,7 +181,6 @@ def animate_fun(idx):
             S_sim = 3*np.array([1,0,0,DP])
             estr = 'circ-pol. '+estr
         y1 = swp.sim_pol_data(S_sim,w,t,ns_level=sim_ns_level,sig_level = sim_siglevel,digitize_mV=sim_digitize, v_bias = sim_bg_level,dphi=sim_wp_phi,ofst = sim_trigger_phase)
-        # y1 = swp.sim_pol_data(S_sim,w,t,ofst = sim_trigger_phase)
         y2 = 5*(np.mod(w*t,2*np.pi) < np.pi/12)
     else:
         hat.a_in_scan_start(channel_mask, samples_per_channel, scan_rate, options)
@@ -153,7 +192,6 @@ def animate_fun(idx):
 
     trigz = swp.extract_triggers(y2)
 
-# I'm rewriting this part of the algorithm, if only because I'm too stoopid to git it. - AM
     Nchunks = len(trigz)-1
 
     Nroll = 0 # Holds rolling average of pts per chunk (PPC). Used for accuracy warning.
@@ -211,15 +249,21 @@ def animate_fun(idx):
         if run_offline:
             bar2[i].set_height(S_sim[i]/S_sim[0])
 
+    D = np.sqrt(S[1]**2 + S[2]**2)
+    if D < 1e-3:
+        D = 1e-7
+    else:
+        D = np.sqrt(1-S[3]**2)/D
+
+
+    x0 = S[1]*D
+    y0 = S[2]*D
+    z0 = S[3]
     
-    ln3.set_data(range(len(y1)),y1)
-    ax3.set_xlim(0, len(y1))
-    # ln3.set_data(range(len(chunk)),chunk)
-    # if auto_scale_y_trace:
-    #     ax3.set_ylim(min(chunk) + 0.001, max(chunk) +0.001)
-    # ax3.set_xlim(0, len(chunk))
-    
-    return ln1, bar, txt1, ln3,
+    ln3.set_data(np.array([0,x0]),np.array([0,y0]))
+    ln3.set_3d_properties(np.array([0,z0]))
+    pt._offsets3d = ([x0],[y0],[z0])
+    return ln1, bar, txt1, 
     
 annie = animation.FuncAnimation(fig,animate_fun,init_func = init_animation, interval = 250)
 plt.show()
