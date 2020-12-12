@@ -6,9 +6,9 @@ import json
 import numpy as np
 
 #f_base = '/'
-f_base = '/home/pi/Documents/data/Nov24/'
+f_base = '/home/pi/Documents/data/Dec12/'
 
-csv_name = 'rot_circ.csv'
+csv_name = 'Fresnel_stokes.csv'
 f_name = f_base+csv_name
 
 if len(sys.argv) == 2:

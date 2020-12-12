@@ -4,10 +4,10 @@ run_offline = False
 
 import swptools as swp
 import numpy as np
+from matplotlib import pyplot as plt, animation
 from mpl_toolkits.mplot3d import axes3d
 import json
 import os.path
-
 if not run_offline:
     from daqhats import mcc118, OptionFlags, HatIDs, HatError
     from daqhats_utils import select_hat_device, enum_mask_to_string, chan_list_to_mask	
