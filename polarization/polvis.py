@@ -1,9 +1,10 @@
 # ps_polvis.py
 
-run_offline = False
+run_offline = True
 
 import swptools as swp
 import numpy as np
+from matplotlib import pyplot as plt, animation
 from mpl_toolkits.mplot3d import axes3d
 import json
 import os.path
