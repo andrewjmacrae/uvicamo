@@ -1,6 +1,6 @@
 # ps_polvis.py
 
-run_offline = True
+run_offline = False
 
 import swptools as swp
 import numpy as np
