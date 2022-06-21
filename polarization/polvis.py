@@ -133,7 +133,6 @@ def init_animation():
 	ax2.set_xticks([0, 1, 2, 3])
 	ax2.set_xticklabels(['S0', 'S1', 'S2', 'S3'])
 	ax2.set_xlabel('Stokes Parameter')
-	#ax2.set_ylabel('Value of Stokes Parameter')
 	ax2.set_title('Stokes Parameters')
 	
 	ax3.set_xlim(-1,1000)
@@ -183,7 +182,6 @@ def animate_fun(idx):
 			estr = 'circ-pol. '+estr
 			
 		y1 = swp.sim_pol_data(S_sim,w,t,ns_level=sim_ns_level,sig_level = sim_siglevel,digitize_mV=sim_digitize, v_bias = sim_bg_level,dphi=sim_wp_phi,ofst = sim_trigger_phase)
-		# y1 = swp.sim_pol_data(S_sim,w,t,ofst = sim_trigger_phase)
 		y2 = 5*(np.mod(w*t,2*np.pi) < np.pi/12)
 		
 	else:
@@ -201,13 +199,11 @@ def animate_fun(idx):
 
 	Nroll = 0 # Holds rolling average of pts per chunk (PPC). Used for accuracy warning.
 	# For each chunk we calculate the 0,2w, and 4w comonents, averaged over all chunks
-	# get_stokes_from_chunk(cnk,wp_ret = np.pi/2,phs_ofst = 0,verbose = False):
 
 	S = np.zeros(4)
 
 	for k in range(Nchunks):
 		chunk = np.array(y1[trigz[k]:trigz[k+1]])
-		#get_stokes_from_chunk(cnk,wp_ret = np.pi/2,phs_ofst = 0,verbose = False):
 		S += swp.get_stokes_from_chunk(chunk,wp_ret = wp_phi,phs_ofst = trigger_phase,verbose = False)
 		Nroll = (Nroll*k + len(chunk))/(k+1) # Update (PPC)
 		
@@ -219,26 +215,21 @@ def animate_fun(idx):
 	if do_save:
 		with open(data_log_file,'a') as f:
 			f.write(f'{S[1]},{S[2]},{S[3]},{DOP}\n')
-
-	# estr = 'warnings: '
-	# All kinds of warnings!!!
+	
+	
+	# appending error messages to estr
 	if Nroll < 180:
-		# print('Warning: insufficient points per revolution for accurate data - slow\'er down!')
 		estr+=f'PPC too low ({int(Nroll)})    '
 	if DOP-1 > .03:
-		# print(f'Warning: Possible unphysical DOP = {round(DOP,2)} measured...')
 		estr += f'Unphysical DOP ({round(DOP,3)})    '
-		
-	# if n0 > 4e-2:
-		## print(f'Warning: Possible alignment error: large cos(2wt) component detected (S,C) = ({b0/nrm},{n0/nrm})')
-		#estr += f'non-zero cos(2w): {round(n0,2)} cf {round(b0*prf/nrm,2)}    '
 
 	if np.mean(y1) < 0.08:
 		estr += f'Light level too low    '
 
 	if Nchunks < 3:
 		estr += f'Insufficient chunks    '
-
+	
+	
 	txt_err.set_text(f'({round(np.mean(y1),2)},{round(S[1],2)},{round(S[2],2)},{round(S[3],2)})\n'+estr)
 	x,y = swp.get_polarization_ellipse(S)
 
@@ -258,10 +249,6 @@ def animate_fun(idx):
 
 	ln3.set_data(range(len(y1)),y1)
 	ax3.set_xlim(0, len(y1))
-	# ln3.set_data(range(len(chunk)),chunk)
-	# if auto_scale_y_trace:
-	#     ax3.set_ylim(min(chunk) + 0.001, max(chunk) +0.001)
-	# ax3.set_xlim(0, len(chunk))
 	
 	return ln1, bar, txt1, ln3,
     
