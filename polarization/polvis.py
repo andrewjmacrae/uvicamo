@@ -14,9 +14,9 @@ if not run_offline:
     from daqhats_utils import select_hat_device, enum_mask_to_string, chan_list_to_mask	
 
 # applying variable names to the paths to the json files
-sim_settings_file = 'settings/simsettings.json'
-daq_settings_file = 'settings/daqsettings.json'
-swp_settings_file = 'settings/swpsettings.json'
+sim_settings_file = 'settings/simsettings.json' # settings for running offline (simulation)
+daq_settings_file = 'settings/daqsettings.json' # settings for daqhats_utils
+swp_settings_file = 'settings/swpsettings.json' # settings for swptools
 
 
 # load sim settings json
@@ -44,9 +44,10 @@ if run_offline:
 			else:
 				S_sim = np.array([1,np.sqrt(.3),np.sqrt(.3),np.sqrt(.4)])
 
+
 # load daq settings json
 if not os.path.isfile(daq_settings_file):
-	print(f'Error: simulation file {sim_settings_file} not found.')
+	print(f'Error: simulation file {daq_settings_file} not found.')
 	print('Run \'gen_default_json.py\' to generate default file first.')
 	exit()
 else:
@@ -68,6 +69,7 @@ else:
 			hat = mcc118(address)
 			options = OptionFlags.CONTINUOUS
 
+
 # load swp settings json
 if not os.path.isfile(swp_settings_file):
 	print(f'Error: settings file {swp_settings_file} not found.')
@@ -84,8 +86,10 @@ else:
 		
 		if data_log_file != '':
 			do_save = True
+			
 			with open(data_log_file,'w') as f:
 				f.write('')
+
 
 # Set up plot canvas
 fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
@@ -135,6 +139,7 @@ def init_animation():
 	ax2.set_xlabel('Stokes Parameter')
 	ax2.set_title('Stokes Parameters')
 	
+	# graph parameters for trace
 	ax3.set_xlim(-1,1000)
 	ax3.set_ylim(0,3)
 	ax3.set_title('Trace')
@@ -144,24 +149,24 @@ def init_animation():
 
 def animate_fun(idx):
 	"""
-	Defines the function FuncAnimation will animate
+	Defines the function FuncAnimation will animate.
 	
 	Parameters:
-		idx: int
-		current frame in the animation
-
-		# note: this parameter is not to be called independantly, its inclusion 
-		is because FuncAnimation requires such a parameter to work
+		idx: int, current frame in the animation
+		# note: this parameter is not to be called independantly, its inclusion is
+			needed because FuncAnimation requires such a parameter to function
 
 	Returns:
 		ln1, bar, ln3: 
 		graphs to be animated
 
 		txt1: 
-
+	
 	"""
 	
-	global phs,t, S_sim
+	global phs, t, S_sim
+	
+	# setup error message text
 	estr = 'warnings: '
 	
 	if run_offline:
@@ -181,7 +186,14 @@ def animate_fun(idx):
 			S_sim = 3*np.array([1,0,0,DP])
 			estr = 'circ-pol. '+estr
 			
-		y1 = swp.sim_pol_data(S_sim,w,t,ns_level=sim_ns_level,sig_level = sim_siglevel,digitize_mV=sim_digitize, v_bias = sim_bg_level,dphi=sim_wp_phi,ofst = sim_trigger_phase)
+		y1 = swp.sim_pol_data(S_sim, w, t,
+				      ns_level = sim_ns_level,
+				      sig_level = sim_siglevel,
+				      digitize_mV = sim_digitize, 
+				      v_bias = sim_bg_level,
+				      dphi = sim_wp_phi,
+				      ofst = sim_trigger_phase)
+		
 		y2 = 5*(np.mod(w*t,2*np.pi) < np.pi/12)
 		
 	else:
@@ -217,7 +229,7 @@ def animate_fun(idx):
 			f.write(f'{S[1]},{S[2]},{S[3]},{DOP}\n')
 	
 	
-	# appending error messages to estr
+	# checking for errors, and appending error messages to estr as needed
 	if Nroll < 180:
 		estr+=f'PPC too low ({int(Nroll)})    '
 	if DOP-1 > .03:
@@ -230,16 +242,20 @@ def animate_fun(idx):
 		estr += f'Insufficient chunks    '
 	
 	
+	# setting up text
 	txt_err.set_text(f'({round(np.mean(y1),2)},{round(S[1],2)},{round(S[2],2)},{round(S[3],2)})\n'+estr)
-	x,y = swp.get_polarization_ellipse(S)
-
 	txt1.set_text(f'DOP: {round(DOP,3)}')
+	
 	if run_offline:
 		urr = 100*abs(DOP - sim_DOP)/sim_DOP
 		txt2.set_text(f'Error: {round(urr,1)}%')
 	else:
 		txt2.set_text(f'Mean Signal: {np.mean(y1)}')
-
+	
+	
+	# application of data to graphs
+	x,y = swp.get_polarization_ellipse(S)
+	
 	ln1.set_data(x,y)
 
 	for i in range(len(S)):
@@ -249,6 +265,7 @@ def animate_fun(idx):
 
 	ln3.set_data(range(len(y1)),y1)
 	ax3.set_xlim(0, len(y1))
+	
 	
 	return ln1, bar, txt1, ln3,
     
